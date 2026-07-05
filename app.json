@@ -9,9 +9,9 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#080E0A",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#062510"
+      "backgroundColor": "#080E0A"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
