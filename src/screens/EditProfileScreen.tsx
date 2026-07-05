@@ -1,7 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,10 +15,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Field from "../components/Field";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+
+const G = {
+  bg: "#0A0A0A",
+  surface: "#141414",
+  border: "#2A2A2A",
+  primary: "#09C068",
+  gold: "#F5C842",
+  text: "#F5F5F5",
+  muted: "#888888",
+  dim: "#444444",
+};
 
 const SPORTS = [
   "cricket",
@@ -38,27 +47,16 @@ const SPORTS = [
   "squash",
   "other",
 ];
-
-interface FormState {
-  name: string;
-  phone: string;
-  sport: string;
-  city: string;
-  bio: string;
-  achievements: string;
-}
+const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Federal"];
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { athlete: contextAthlete, updateAthlete } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { athlete, updateAthlete } = useAuth();
 
-  // Use context athlete, fall back to params
-  const athlete =
-    contextAthlete ??
-    (params.athlete ? JSON.parse(params.athlete as string) : null);
-
-  const [form, setForm] = useState<FormState>({
+  const [photo, setPhoto] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
     name: athlete?.name ?? "",
     phone: athlete?.phone ?? "",
     sport: athlete?.sport ?? "",
@@ -66,83 +64,60 @@ export default function EditProfileScreen() {
     bio: athlete?.bio ?? "",
     achievements: athlete?.achievements ?? "",
   });
-  const [photo, setPhoto] = useState<any>(null);
-  const [sportOpen, setSportOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<FormState>>({});
 
-  function setField(field: keyof FormState, value: string) {
-    setForm((p) => ({ ...p, [field]: value }));
-    setErrors((p) => ({ ...p, [field]: undefined }));
+  function set(key: string, val: string) {
+    setForm((p) => ({ ...p, [key]: val }));
   }
 
-  async function pickImage() {
+  async function pickPhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow photo access.");
+      Alert.alert("Permission needed");
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled) setPhoto(result.assets[0]);
-  }
-
-  function validate(): boolean {
-    const e: Partial<FormState> = {};
-    if (!form.name.trim() || form.name.trim().length < 2)
-      e.name = "Full name is required";
-    if (!form.phone.trim() || form.phone.trim().length < 10)
-      e.phone = "Valid phone number is required";
-    if (!form.sport) e.sport = "Please select a sport";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (!r.canceled && r.assets[0]) setPhoto(r.assets[0]);
   }
 
   async function handleSave() {
-    if (!validate()) return;
+    if (!form.name.trim()) {
+      Alert.alert("Name is required.");
+      return;
+    }
     setLoading(true);
     try {
-      // Step 1: upload new photo to R2 if user picked one
       let newPhotoUrl = athlete?.photo_url ?? null;
+
       if (photo) {
         const photoForm = new FormData();
         const filename = photo.uri.split("/").pop() || "photo.jpg";
         const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-        const mimeMap: Record<string, string> = {
+        const mime: Record<string, string> = {
           jpg: "image/jpeg",
           jpeg: "image/jpeg",
           png: "image/png",
-          webp: "image/webp",
         };
         photoForm.append("photo", {
           uri: photo.uri,
           name: filename,
-          type: mimeMap[ext] ?? "image/jpeg",
+          type: mime[ext] ?? "image/jpeg",
         } as any);
-        photoForm.append("athlete_id", athlete.id);
-
+        photoForm.append("athlete_id", athlete?.id ?? "");
         const photoRes = await fetch(`${API_BASE_URL}/api/upload/photo`, {
           method: "POST",
           body: photoForm,
         });
         const photoData = await photoRes.json();
         if (photoRes.ok) newPhotoUrl = photoData.photo_url;
-        else {
-          Alert.alert(
-            "Photo Upload Failed",
-            photoData.message ||
-              "Could not upload photo. Other changes will still be saved.",
-          );
-        }
       }
 
-      // Step 2: update profile text fields
       const body = new URLSearchParams();
-      body.append("id", athlete.id);
+      body.append("id", athlete?.id ?? "");
       body.append("name", form.name.trim());
       body.append("phone", form.phone.trim());
       body.append("sport", form.sport);
@@ -151,79 +126,68 @@ export default function EditProfileScreen() {
       body.append("achievements", form.achievements.trim());
       if (newPhotoUrl) body.append("photo_url", newPhotoUrl);
 
-      const response = await fetch(`${API_BASE_URL}/api/profile`, {
+      const res = await fetch(`${API_BASE_URL}/api/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
+      const data = await res.json();
 
-      const data = await response.json();
-
-      if (response.ok) {
-        updateAthlete({
-          ...data.data,
-          ...(newPhotoUrl ? { photo_url: newPhotoUrl } : {}),
-        });
-        router.replace({ pathname: "/(tabs)/profile" });
+      if (res.ok) {
+        updateAthlete({ ...data.data, photo_url: newPhotoUrl });
+        router.replace("/(tabs)/profile");
       } else {
         Alert.alert("Error", data.message || "Could not save changes.");
       }
-    } catch (err) {
-      Alert.alert("Connection Error", "Unable to connect. Please check your internet and try again.");
+    } catch {
+      Alert.alert("Error", "Connection failed.");
     } finally {
       setLoading(false);
     }
   }
 
-  function formatSportLabel(s: string) {
-    return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <View style={styles.root}>
+      <StatusBar hidden={true} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <StatusBar hidden={true} />
-
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backBtn}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity
-            style={[styles.saveBtn, loading && { opacity: 0.5 }]}
-            onPress={handleSave}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: insets.top + 16 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Photo picker */}
-          <View style={styles.photoSection}>
+          {/* Header */}
+          <View style={styles.header}>
             <TouchableOpacity
-              onPress={pickImage}
-              activeOpacity={0.8}
-              style={styles.avatarWrap}
+              style={styles.backBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
             >
+              <Text style={styles.backBtnText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>EDIT PROFILE</Text>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSave}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.saveBtnText}>SAVE</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Photo */}
+          <View style={styles.photoSection}>
+            <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8}>
               {photo ? (
                 <Image source={{ uri: photo.uri }} style={styles.avatarImg} />
               ) : athlete?.photo_url ? (
@@ -234,280 +198,219 @@ export default function EditProfileScreen() {
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <Text style={styles.avatarInitial}>
-                    {form.name.charAt(0).toUpperCase() || "?"}
+                    {athlete?.name?.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
-              <View style={styles.cameraOverlay}>
-                <Ionicons name="camera-outline" size={20} color="#fff" />
+              <View style={styles.photoEditBadge}>
+                <Text style={styles.photoEditIcon}>📷</Text>
               </View>
             </TouchableOpacity>
             <Text style={styles.photoHint}>Tap to change photo</Text>
           </View>
 
-          {/* Form fields */}
-          <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
+          {/* Fields */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>PERSONAL INFO</Text>
 
-          <Field label="Full Name" error={errors.name}>
-            <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
-              placeholder="Your full name"
-              placeholderTextColor="#444"
-              value={form.name}
-              onChangeText={(v) => setField("name", v)}
-              autoCapitalize="words"
-            />
-          </Field>
-
-          <Field label="Phone Number" error={errors.phone}>
-            <TextInput
-              style={[styles.input, errors.phone && styles.inputError]}
-              placeholder="Your phone number"
-              placeholderTextColor="#444"
-              value={form.phone}
-              onChangeText={(v) => setField("phone", v)}
-              keyboardType="phone-pad"
-            />
-          </Field>
-
-          <Field label="City">
+            <Text style={styles.label}>FULL NAME</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Lahore, Karachi, Islamabad"
-              placeholderTextColor="#444"
-              value={form.city}
-              onChangeText={(v) => setField("city", v)}
+              value={form.name}
+              onChangeText={(v) => set("name", v)}
+              placeholder="Your name"
+              placeholderTextColor={G.dim}
               autoCapitalize="words"
             />
-          </Field>
 
-          <Text style={styles.sectionLabel}>SPORTS PROFILE</Text>
+            <Text style={styles.label}>PHONE</Text>
+            <TextInput
+              style={styles.input}
+              value={form.phone}
+              onChangeText={(v) => set("phone", v)}
+              placeholder="03001234567"
+              placeholderTextColor={G.dim}
+              keyboardType="phone-pad"
+            />
 
-          <Field label="Sport" error={errors.sport}>
-            <TouchableOpacity
+            <Text style={styles.label}>BIO</Text>
+            <TextInput
               style={[
                 styles.input,
-                styles.selectBtn,
-                errors.sport && styles.inputError,
+                { minHeight: 80, textAlignVertical: "top" },
               ]}
-              onPress={() => setSportOpen(!sportOpen)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={
-                  form.sport ? styles.selectText : styles.selectPlaceholder
-                }
-              >
-                {form.sport
-                  ? formatSportLabel(form.sport)
-                  : "Select your sport"}
-              </Text>
-              <Text style={styles.selectArrow}>{sportOpen ? "▲" : "▼"}</Text>
-            </TouchableOpacity>
-            {sportOpen && (
-              <View style={styles.dropdown}>
-                <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
-                  {SPORTS.map((s) => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[
-                        styles.dropdownItem,
-                        form.sport === s && styles.dropdownItemActive,
-                      ]}
-                      onPress={() => {
-                        setField("sport", s);
-                        setSportOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownText,
-                          form.sport === s && styles.dropdownTextActive,
-                        ]}
-                      >
-                        {formatSportLabel(s)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </Field>
-
-          <Field label="Bio">
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              placeholder="Tell your story — what drives you as an athlete?"
-              placeholderTextColor="#444"
               value={form.bio}
-              onChangeText={(v) => setField("bio", v)}
+              onChangeText={(v) => set("bio", v)}
+              placeholder="Tell us about yourself..."
+              placeholderTextColor={G.dim}
               multiline
               numberOfLines={3}
-              textAlignVertical="top"
             />
-          </Field>
 
-          <Field label="Previous Achievements">
+            <Text style={styles.label}>ACHIEVEMENTS</Text>
             <TextInput
-              style={[styles.input, styles.textarea]}
-              placeholder="Titles, medals, tournaments..."
-              placeholderTextColor="#444"
+              style={[
+                styles.input,
+                { minHeight: 80, textAlignVertical: "top" },
+              ]}
               value={form.achievements}
-              onChangeText={(v) => setField("achievements", v)}
+              onChangeText={(v) => set("achievements", v)}
+              placeholder="Your sports achievements..."
+              placeholderTextColor={G.dim}
               multiline
-              numberOfLines={4}
-              textAlignVertical="top"
+              numberOfLines={3}
             />
-          </Field>
-
-          {/* Read-only fields */}
-          <Text style={styles.sectionLabel}>ACCOUNT INFO</Text>
-
-          <View style={styles.readOnlyField}>
-            <Text style={styles.readOnlyLabel}>EMAIL</Text>
-            <Text style={styles.readOnlyValue}>{athlete?.email}</Text>
-            <Text style={styles.readOnlyNote}>Email cannot be changed</Text>
           </View>
 
-          <View style={styles.readOnlyField}>
-            <Text style={styles.readOnlyLabel}>CNIC</Text>
-            <Text style={styles.readOnlyValue}>{athlete?.cnic}</Text>
-            <Text style={styles.readOnlyNote}>CNIC cannot be changed</Text>
+          <View style={[styles.card, { marginTop: 12 }]}>
+            <Text style={styles.cardTitle}>SPORT</Text>
+            <View style={styles.chipRow}>
+              {SPORTS.map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.chip, form.sport === s && styles.chipActive]}
+                  onPress={() => set("sport", s)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      form.sport === s && { color: "#fff" },
+                    ]}
+                  >
+                    {s
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0A0A0A" },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
+  root: { flex: 1, backgroundColor: G.bg },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
-    backgroundColor: "#0A0A0A",
+    marginBottom: 24,
   },
-  backBtn: { padding: 6 },
-  backIcon: { color: "#CCC", fontSize: 22 },
-  headerTitle: { color: "#F5F5F5", fontSize: 16, fontWeight: "700" },
-  saveBtn: {
-    backgroundColor: "#D32F2F",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    minWidth: 60,
-    alignItems: "center",
-  },
-  saveBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-
-  photoSection: { alignItems: "center", paddingVertical: 24 },
-  avatarWrap: { position: "relative", marginBottom: 8 },
-  avatarImg: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 2,
-    borderColor: "#D32F2F",
-  },
-  avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1.5,
-    borderColor: "#333",
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: G.surface,
+    borderWidth: 0.5,
+    borderColor: G.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitial: { color: "#555", fontSize: 34, fontWeight: "900" },
-  cameraOverlay: {
+  backBtnText: { color: G.muted, fontSize: 20, marginTop: -2 },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: G.text,
+    letterSpacing: 2,
+  },
+  saveBtn: {
+    backgroundColor: G.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  saveBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+
+  photoSection: { alignItems: "center", marginBottom: 24 },
+  avatarImg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: G.primary,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: G.surface,
+    borderWidth: 3,
+    borderColor: G.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { color: G.primary, fontSize: 40, fontWeight: "900" },
+  photoEditBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#D32F2F",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: G.gold,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#0A0A0A",
+    borderColor: G.bg,
   },
-  photoHint: { color: "#555", fontSize: 12 },
+  photoEditIcon: { fontSize: 14 },
+  photoHint: { color: G.muted, fontSize: 12, marginTop: 8 },
 
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 2.5,
-    color: "#666",
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 12,
-  },
-
-  input: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    color: "#F5F5F5",
-    fontSize: 15,
-    padding: 13,
-  },
-  inputError: { borderColor: "#EF4444" },
-  textarea: { minHeight: 90, textAlignVertical: "top" },
-
-  selectBtn: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  selectText: { color: "#F5F5F5", fontSize: 15 },
-  selectPlaceholder: { color: "#444", fontSize: 15 },
-  selectArrow: { color: "#888", fontSize: 11 },
-  dropdown: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    marginTop: 4,
-    overflow: "hidden",
-  },
-  dropdownItem: {
-    padding: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
-  },
-  dropdownItemActive: { backgroundColor: "rgba(211,47,47,0.15)" },
-  dropdownText: { color: "#CCC", fontSize: 15 },
-  dropdownTextActive: { color: "#EF4444", fontWeight: "600" },
-
-  readOnlyField: {
-    marginHorizontal: 20,
-    marginBottom: 14,
-    backgroundColor: "#141414",
+  card: {
+    backgroundColor: G.surface,
     borderWidth: 0.5,
-    borderColor: "#222",
-    borderRadius: 10,
-    padding: 13,
+    borderColor: G.border,
+    borderRadius: 16,
+    padding: 16,
   },
-  readOnlyLabel: {
+  cardTitle: {
     fontSize: 10,
-    fontWeight: "600",
-    color: "#555",
-    letterSpacing: 1,
-    marginBottom: 4,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: G.primary,
+    marginBottom: 16,
   },
-  readOnlyValue: { fontSize: 15, color: "#555" },
-  readOnlyNote: { fontSize: 11, color: "#3A3A3A", marginTop: 4 },
+
+  label: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+    color: G.muted,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: G.bg,
+    borderWidth: 0.5,
+    borderColor: G.border,
+    borderRadius: 10,
+    color: G.text,
+    fontSize: 14,
+    padding: 12,
+    marginBottom: 14,
+  },
+
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    backgroundColor: G.bg,
+    borderWidth: 0.5,
+    borderColor: G.border,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  chipActive: { backgroundColor: G.primary, borderColor: G.primary },
+  chipText: { color: G.muted, fontSize: 12, fontWeight: "600" },
 });

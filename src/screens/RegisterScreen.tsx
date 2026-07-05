@@ -1,9 +1,10 @@
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,30 +16,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Field from "../components/Field";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../config/api";
 
-// ── Data ──────────────────────────────────────────────────────
-const SPORTS = [
-  "cricket",
-  "football",
-  "tennis",
-  "table_tennis",
-  "swimming",
-  "athletics",
-  "hockey",
-  "volleyball",
-  "badminton",
-  "boxing",
-  "wrestling",
-  "weightlifting",
-  "cycling",
-  "squash",
-  "other",
-];
+const { width } = Dimensions.get("window");
+
+const G = {
+  bg: "#080E0A",
+  surface: "#111811",
+  card: "#141414",
+  border: "#1E2E22",
+  primary: "#09C068",
+  gold: "#F5C842",
+  text: "#F5F5F5",
+  muted: "#7A8C80",
+  dim: "#3A4A3E",
+};
 
 const PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Federal"];
-
 const CITIES_BY_PROVINCE: Record<string, string[]> = {
   Punjab: [
     "Lahore",
@@ -47,20 +42,20 @@ const CITIES_BY_PROVINCE: Record<string, string[]> = {
     "Gujranwala",
     "Multan",
     "Sialkot",
-    "Bahawalpur",
     "Sargodha",
+    "Bahawalpur",
     "Sheikhupura",
+    "Wah Cantt",
+    "Kasur",
+    "Okara",
+    "Sahiwal",
+    "Gujrat",
     "Jhang",
     "Rahim Yar Khan",
-    "Gujrat",
-    "Kasur",
-    "Sahiwal",
-    "Okara",
-    "Wah Cantonment",
-    "Dera Ghazi Khan",
-    "Mirpur Khas",
+    "Hafizabad",
     "Chiniot",
-    "Kamoke",
+    "Khanewal",
+    "Mandi Bahauddin",
   ],
   Sindh: [
     "Karachi",
@@ -68,33 +63,33 @@ const CITIES_BY_PROVINCE: Record<string, string[]> = {
     "Sukkur",
     "Larkana",
     "Nawabshah",
-    "Mirpurkhas",
-    "Khairpur",
+    "Mirpur Khas",
     "Jacobabad",
     "Shikarpur",
+    "Khairpur",
     "Dadu",
     "Thatta",
     "Badin",
     "Sanghar",
-    "Tando Allahyar",
-    "Kotri",
+    "Umerkot",
+    "Tando Adam",
   ],
   KPK: [
     "Peshawar",
+    "Abbottabad",
     "Mardan",
     "Mingora",
     "Kohat",
-    "Abbottabad",
-    "Mansehra",
-    "Swabi",
+    "Bannu",
     "Dera Ismail Khan",
-    "Charsadda",
+    "Swabi",
     "Nowshera",
     "Haripur",
-    "Bannu",
-    "Swat",
-    "Buner",
-    "Malakand",
+    "Charsadda",
+    "Mansehra",
+    "Chitral",
+    "Karak",
+    "Hangu",
   ],
   Balochistan: [
     "Quetta",
@@ -115,26 +110,41 @@ const CITIES_BY_PROVINCE: Record<string, string[]> = {
   ],
   Federal: ["Islamabad"],
 };
+const SPORTS = [
+  { key: "cricket", label: "Cricket" },
+  { key: "football", label: "Football" },
+  { key: "hockey", label: "Hockey" },
+  { key: "boxing", label: "Boxing" },
+  { key: "athletics", label: "Athletics" },
+  { key: "swimming", label: "Swimming" },
+  { key: "badminton", label: "Badminton" },
+  { key: "volleyball", label: "Volleyball" },
+  { key: "tennis", label: "Tennis" },
+  { key: "table_tennis", label: "Table Tennis" },
+  { key: "wrestling", label: "Wrestling" },
+  { key: "weightlifting", label: "Weightlifting" },
+  { key: "cycling", label: "Cycling" },
+  { key: "squash", label: "Squash" },
+  { key: "other", label: "Other" },
+];
 
-// ── Types ─────────────────────────────────────────────────────
-interface FormState {
-  name: string;
-  email: string;
-  phone: string;
-  cnic: string;
-  sport: string;
-  province: string;
-  city: string;
-  achievements: string;
-  password: string;
-  confirmPassword: string;
-}
+const STEPS = [
+  { number: "01", label: "Personal Info" },
+  { number: "02", label: "Location & Sport" },
+  { number: "03", label: "Security" },
+];
 
-// ── Component ─────────────────────────────────────────────────
 export default function RegisterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  const [form, setForm] = useState<FormState>({
+  const [step, setStep] = useState(0);
+  const [photo, setPhoto] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
@@ -146,610 +156,566 @@ export default function RegisterScreen() {
     password: "",
     confirmPassword: "",
   });
-  const [photo, setPhoto] = useState<any>(null);
-  const [sportOpen, setSportOpen] = useState(false);
-  const [provOpen, setProvOpen] = useState(false);
-  const [cityOpen, setCityOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<
-    Partial<FormState & { general: string }>
-  >({});
-  const [success, setSuccess] = useState(false);
 
-  function setField(field: keyof FormState, value: string) {
-    setForm((p) => ({ ...p, [field]: value }));
-    setErrors((p) => ({ ...p, [field]: undefined, general: undefined }));
+  function set(key: string, val: string) {
+    setForm((p) => ({ ...p, [key]: val }));
+    setErrors((p) => ({ ...p, [key]: "" }));
   }
 
-  function formatCNIC(text: string) {
-    const digits = text.replace(/\D/g, "");
-    let f = digits;
-    if (digits.length > 5) f = digits.slice(0, 5) + "-" + digits.slice(5);
-    if (digits.length > 12) f = f.slice(0, 13) + "-" + digits.slice(12);
-    setField("cnic", f.slice(0, 15));
+  function formatCnic(raw: string) {
+    const digits = raw.replace(/\D/g, "").slice(0, 13);
+    if (digits.length <= 5) return digits;
+    if (digits.length <= 12) return digits.slice(0, 5) + "-" + digits.slice(5);
+    return (
+      digits.slice(0, 5) + "-" + digits.slice(5, 12) + "-" + digits.slice(12)
+    );
   }
 
-  async function pickImage() {
+  async function pickPhoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Please allow photo access to upload your photo.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    if (status !== "granted") return;
+    const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.7,
+      aspect: [1, 1],
+      quality: 0.8,
     });
-    if (!result.canceled) setPhoto(result.assets[0]);
+    if (!r.canceled && r.assets[0]) setPhoto(r.assets[0]);
   }
 
-  function validate(): boolean {
-    const e: Partial<FormState> = {};
-    if (!form.name.trim() || form.name.trim().length < 2)
-      e.name = "Full name is required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      e.email = "Valid email is required";
-    if (!form.phone.trim() || form.phone.trim().length < 10)
-      e.phone = "Valid phone number is required";
-    if (!/^\d{5}-\d{7}-\d$/.test(form.cnic)) e.cnic = "Format: 12345-1234567-1";
-    if (!form.sport) e.sport = "Please select a sport";
-    if (!form.province) e.province = "Please select a province";
-    if (!form.city) e.city = "Please select a city";
-    if (!form.password || form.password.length < 6)
-      e.password = "Password must be at least 6 characters";
-    if (form.password !== form.confirmPassword)
-      e.confirmPassword = "Passwords do not match";
+  function validateStep() {
+    const e: Record<string, string> = {};
+    if (step === 0) {
+      if (!form.name.trim() || form.name.length < 2)
+        e.name = "Full name required";
+      if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
+        e.email = "Valid email required";
+      if (!form.phone.trim() || form.phone.length < 10)
+        e.phone = "Valid phone required";
+      if (!form.cnic.trim() || !/^\d{5}-\d{7}-\d$/.test(form.cnic))
+        e.cnic = "Format: 12345-1234567-1";
+    }
+    if (step === 1) {
+      if (!form.sport) e.sport = "Select a sport";
+      if (!form.province) e.province = "Select province";
+      if (!form.city) e.city = "Select city";
+    }
+    if (step === 2) {
+      if (!form.password || form.password.length < 6)
+        e.password = "Min 6 characters";
+      if (form.password !== form.confirmPassword)
+        e.confirmPassword = "Passwords don't match";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
+  function next() {
+    if (validateStep()) setStep((s) => s + 1);
+  }
+  function back() {
+    setStep((s) => s - 1);
+  }
+
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validateStep()) return;
     setLoading(true);
     try {
       const body = new FormData();
-      body.append("name", form.name.trim());
-      body.append("email", form.email.trim());
-      body.append("phone", form.phone.trim());
-      body.append("cnic", form.cnic.trim());
-      body.append("sport", form.sport);
-      body.append("province", form.province);
-      body.append("city", form.city);
-      body.append("achievements", form.achievements.trim());
-      body.append("password", form.password);
-
-      // Attach photo if selected
+      Object.entries(form).forEach(([k, v]) => body.append(k, v));
       if (photo) {
         const filename = photo.uri.split("/").pop() || "photo.jpg";
         const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-        const mimeMap: Record<string, string> = {
+        const mime: Record<string, string> = {
           jpg: "image/jpeg",
           jpeg: "image/jpeg",
           png: "image/png",
-          webp: "image/webp",
         };
         body.append("photo", {
           uri: photo.uri,
           name: filename,
-          type: mimeMap[ext] ?? "image/jpeg",
+          type: mime[ext] ?? "image/jpeg",
         } as any);
       }
-
-      const response = await fetch(`${API_BASE_URL}/api/register`, {
+      const res = await fetch(`${API_BASE_URL}/api/register`, {
         method: "POST",
         body,
-        // Don't set Content-Type — fetch sets it with boundary automatically
       });
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(true);
-        setForm({
-          name: "",
-          email: "",
-          phone: "",
-          cnic: "",
-          sport: "",
-          province: "",
-          city: "",
-          achievements: "",
-          password: "",
-          confirmPassword: "",
-        });
-        setPhoto(null);
-      } else {
-        if (data.errors) setErrors(data.errors);
-        else setErrors({ general: data.message || "Registration failed." });
-      }
+      const data = await res.json();
+      if (res.ok) setSuccess(true);
+      else setErrors({ submit: data.message || "Registration failed." });
     } catch {
-      Alert.alert(
-        "Connection Error",
-        "Cannot reach server.\n\n1. Backend is running (node server.js)\n2. Phone and PC on same WiFi\n3. IP in src/config/api.ts matches your PC",
-      );
+      setErrors({ submit: "Cannot reach server." });
     } finally {
       setLoading(false);
     }
   }
 
-  function label(val: string) {
-    return val.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
-  // ── SUCCESS ────────────────────────────────────────────────
+  // ── Success screen ────────────────────────────────────────
   if (success) {
     return (
-      <View style={styles.root}>
+      <View
+        style={[
+          styles.root,
+          { alignItems: "center", justifyContent: "center", padding: 28 },
+        ]}
+      >
         <StatusBar hidden={true} />
-        <View style={styles.successContainer}>
-          <View style={styles.successCard}>
-            <View style={styles.successIcon}>
-              <Text style={styles.successCheck}>✓</Text>
-            </View>
-            <Text style={styles.successTitle}>Registration Complete!</Text>
-            <Text style={styles.successMsg}>
-              We have sent a verification link to your email address. Please
-              check your inbox and tap the link to verify your account before
-              logging in.
-            </Text>
-            <View style={[styles.successDivider, { marginVertical: 16 }]} />
-            {/* Email check reminder */}
-            <View
-              style={{
-                backgroundColor: "rgba(245,158,11,0.1)",
-                borderWidth: 0.5,
-                borderColor: "rgba(245,158,11,0.4)",
-                borderRadius: 10,
-                padding: 12,
-                marginBottom: 16,
-                width: "100%",
-              }}
-            >
-              <Text
-                style={{
-                  color: "#F59E0B",
-                  fontSize: 13,
-                  fontWeight: "700",
-                  marginBottom: 4,
-                }}
-              >
-                📧 Check Your Email
-              </Text>
-              <Text style={{ color: "#CCC", fontSize: 12, lineHeight: 18 }}>
-                Open the verification link we sent you, then come back to log
-                in.
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.loginNowBtn}
-              onPress={() => router.push("/login")}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.loginNowText}>GO TO LOGIN</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.registerAnotherBtn}
-              onPress={() => setSuccess(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.registerAnotherText}>
-                Register Another Athlete
-              </Text>
-            </TouchableOpacity>
+        <LinearGradient
+          colors={["#062510", "#0A1A0F", "#080E0A"]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.successCard}>
+          <View style={styles.successIconWrap}>
+            <Text style={styles.successEmoji}>🎉</Text>
           </View>
+          <Text style={styles.successTitle}>You are In!</Text>
+          <Text style={styles.successMsg}>
+            Welcome to Khelo Punjab — Pakistans premier sports talent platform.
+          </Text>
+          <TouchableOpacity
+            style={styles.successBtn}
+            onPress={() => router.replace("/login")}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={["#0FD97A", "#09C068", "#07A055"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.successBtnGrad}
+            >
+              <Text style={styles.successBtnText}>GO TO LOGIN →</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setSuccess(false);
+              setStep(0);
+            }}
+            style={{ marginTop: 14 }}
+          >
+            <Text style={{ color: G.muted, fontSize: 13 }}>
+              Register another athlete
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // ── FORM ───────────────────────────────────────────────────
   return (
     <View style={styles.root}>
       <StatusBar hidden={true} />
+
+      {/* Background */}
+      <LinearGradient
+        colors={["#062510", "#0A1A0F", "#080E0A", "#080E0A"]}
+        locations={[0, 0.3, 0.55, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Diagonal pattern */}
+      <View style={styles.patternWrap} pointerEvents="none">
+        {Array.from({ length: 24 }).map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.patternLine,
+              {
+                top: i * 30 - 80,
+                transform: [{ rotate: "-35deg" }],
+                opacity: 0.05,
+              },
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* Glow */}
+      <View style={styles.glowTop} />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={20}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Image
-            source={require("../../assets/icon.png")}
-            style={styles.headerLogoImg}
-          />
-          <Text style={styles.headerTitle}>
-            The Next <Text style={styles.red}>Olympian</Text>
-          </Text>
-        </View>
-
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: insets.top + 16 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
         >
-          {/* Hero */}
-          <View style={styles.hero}>
-            <Text style={styles.heroSub}>PAKISTAN SPORTS INITIATIVE</Text>
-            <Text style={styles.heroTitle}>
-              Become <Text style={styles.red}>The Next</Text>
-              {"\n"}Olympian
-            </Text>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Register Now!</Text>
+          {/* ── Header ── */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => (step === 0 ? router.back() : back())}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.backBtnText}>←</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <Text style={styles.appName}>KHELO</Text>
+              <Text style={styles.headerSub}>
+                Join Pakistans Sports Platform
+              </Text>
             </View>
-            <Text style={styles.heroDesc}>
-              Are you passionate about sports? Do you dream of representing
-              Pakistan on the global stage? Join the most powerful grassroots
-              sports movement in the country.
-            </Text>
+            <View style={{ width: 40 }} />
           </View>
 
-          {/* Feature Cards */}
-          <View style={styles.featGrid}>
-            {[
-              { icon: "👥", label: "Nationwide Trials" },
-              { icon: "🏅", label: "10+ Sports Categories" },
-              { icon: "🎯", label: "Coaching by Olympians" },
-              { icon: "🛡️", label: "Scholarships" },
-            ].map((f, i) => (
-              <View key={i} style={styles.featCard}>
-                <Text style={styles.featIcon}>{f.icon}</Text>
-                <Text style={styles.featLabel}>{f.label}</Text>
+          {/* ── Step indicator ── */}
+          <View style={styles.stepsRow}>
+            {STEPS.map((s, i) => (
+              <View key={i} style={styles.stepItem}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    i < step && styles.stepDone,
+                    i === step && styles.stepActive,
+                  ]}
+                >
+                  {i < step ? (
+                    <Text style={styles.stepCheck}>✓</Text>
+                  ) : (
+                    <Text
+                      style={[styles.stepNum, i === step && { color: "#fff" }]}
+                    >
+                      {s.number}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[styles.stepLabel, i === step && { color: G.primary }]}
+                >
+                  {s.label}
+                </Text>
+                {i < STEPS.length - 1 && (
+                  <View
+                    style={[
+                      styles.stepConnector,
+                      i < step && { backgroundColor: G.primary },
+                    ]}
+                  />
+                )}
               </View>
             ))}
           </View>
 
-          {/* General error banner */}
-          {errors.general ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>⚠ {errors.general}</Text>
-            </View>
-          ) : null}
+          {/* ── Card ── */}
+          <View style={styles.card}>
+            <View style={styles.cardAccent} />
 
-          {/* ── PERSONAL INFO ── */}
-          <Text style={styles.sectionLabel}>PERSONAL INFO</Text>
-
-          <Field label="Name" error={errors.name}>
-            <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
-              placeholder="Enter your full name"
-              placeholderTextColor="#444"
-              value={form.name}
-              onChangeText={(v) => setField("name", v)}
-              autoCapitalize="words"
-            />
-          </Field>
-
-          <Field label="Email" error={errors.email}>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder="Enter your email"
-              placeholderTextColor="#444"
-              value={form.email}
-              onChangeText={(v) => setField("email", v)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </Field>
-
-          <Field label="Phone No" error={errors.phone}>
-            <TextInput
-              style={[styles.input, errors.phone && styles.inputError]}
-              placeholder="Enter your phone number"
-              placeholderTextColor="#444"
-              value={form.phone}
-              onChangeText={(v) => setField("phone", v)}
-              keyboardType="phone-pad"
-            />
-          </Field>
-
-          <Field label="CNIC" error={errors.cnic}>
-            <TextInput
-              style={[styles.input, errors.cnic && styles.inputError]}
-              placeholder="12345-1234567-1"
-              placeholderTextColor="#444"
-              value={form.cnic}
-              onChangeText={formatCNIC}
-              keyboardType="numeric"
-              maxLength={15}
-            />
-          </Field>
-
-          {/* ── ACCOUNT SECURITY ── */}
-          <Text style={styles.sectionLabel}>ACCOUNT SECURITY</Text>
-
-          <Field label="Password" error={errors.password}>
-            <View style={styles.passwordRow}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.passwordInput,
-                  errors.password && styles.inputError,
-                ]}
-                placeholder="Min 6 characters"
-                placeholderTextColor="#444"
-                value={form.password}
-                onChangeText={(v) => setField("password", v)}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+            {/* Photo upload — step 0 only */}
+            {step === 0 && (
               <TouchableOpacity
-                style={styles.eyeBtn}
-                onPress={() => setShowPassword((p) => !p)}
-                activeOpacity={0.7}
+                style={styles.photoBtn}
+                onPress={pickPhoto}
+                activeOpacity={0.8}
               >
-                <Text style={styles.eyeIcon}>
-                  {showPassword ? "HIDE" : "SHOW"}
-                </Text>
+                {photo ? (
+                  <Image source={{ uri: photo.uri }} style={styles.photoImg} />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <View style={styles.photoCameraIcon}>
+                      <Text style={{ fontSize: 22 }}>📷</Text>
+                    </View>
+                    <Text style={styles.photoLabel}>Add Photo</Text>
+                    <Text style={styles.photoSub}>Optional</Text>
+                  </View>
+                )}
               </TouchableOpacity>
-            </View>
-          </Field>
-
-          <Field label="Confirm Password" error={errors.confirmPassword}>
-            <View style={styles.passwordRow}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.passwordInput,
-                  errors.confirmPassword && styles.inputError,
-                ]}
-                placeholder="Re-enter your password"
-                placeholderTextColor="#444"
-                value={form.confirmPassword}
-                onChangeText={(v) => setField("confirmPassword", v)}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                style={styles.eyeBtn}
-                onPress={() => setShowConfirmPassword((p) => !p)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.eyeIcon}>
-                  {showConfirmPassword ? "HIDE" : "SHOW"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Field>
-
-          {/* ── LOCATION ── */}
-          <Text style={styles.sectionLabel}>LOCATION</Text>
-
-          {/* Province dropdown */}
-          <Field label="Province" error={errors.province}>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.selectBtn,
-                errors.province && styles.inputError,
-              ]}
-              onPress={() => {
-                setProvOpen(!provOpen);
-                setCityOpen(false);
-                setSportOpen(false);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={
-                  form.province ? styles.selectText : styles.selectPlaceholder
-                }
-              >
-                {form.province || "Select your province"}
-              </Text>
-              <Text style={styles.selectArrow}>{provOpen ? "▲" : "▼"}</Text>
-            </TouchableOpacity>
-            {provOpen && (
-              <View style={styles.dropdown}>
-                {PROVINCES.map((p) => (
-                  <TouchableOpacity
-                    key={p}
-                    style={[
-                      styles.dropdownItem,
-                      form.province === p && styles.dropdownItemActive,
-                    ]}
-                    onPress={() => {
-                      setField("province", p);
-                      setField("city", ""); // reset city when province changes
-                      setProvOpen(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownText,
-                        form.province === p && styles.dropdownTextActive,
-                      ]}
-                    >
-                      {p}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             )}
-          </Field>
 
-          {/* City dropdown — only show once province is selected */}
-          <Field label="City" error={errors.city}>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.selectBtn,
-                errors.city && styles.inputError,
-                !form.province && styles.inputDisabled,
-              ]}
-              onPress={() => {
-                if (!form.province) return;
-                setCityOpen(!cityOpen);
-                setProvOpen(false);
-                setSportOpen(false);
-              }}
-              activeOpacity={form.province ? 0.8 : 1}
-            >
-              <Text
-                style={form.city ? styles.selectText : styles.selectPlaceholder}
-              >
-                {!form.province
-                  ? "Select province first"
-                  : form.city || "Select your city"}
-              </Text>
-              <Text style={styles.selectArrow}>{cityOpen ? "▲" : "▼"}</Text>
-            </TouchableOpacity>
-            {cityOpen && form.province && (
-              <View style={styles.dropdown}>
-                <ScrollView nestedScrollEnabled style={{ maxHeight: 220 }}>
-                  {(CITIES_BY_PROVINCE[form.province] ?? []).map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      style={[
-                        styles.dropdownItem,
-                        form.city === c && styles.dropdownItemActive,
-                      ]}
-                      onPress={() => {
-                        setField("city", c);
-                        setCityOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownText,
-                          form.city === c && styles.dropdownTextActive,
-                        ]}
-                      >
-                        {c}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+            {/* Submit error */}
+            {errors.submit ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>⚠ {errors.submit}</Text>
               </View>
-            )}
-          </Field>
+            ) : null}
 
-          {/* ── SPORTS PROFILE ── */}
-          <Text style={styles.sectionLabel}>SPORTS PROFILE</Text>
-
-          <Field label="Sport" error={errors.sport}>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.selectBtn,
-                errors.sport && styles.inputError,
-              ]}
-              onPress={() => {
-                setSportOpen(!sportOpen);
-                setProvOpen(false);
-                setCityOpen(false);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={
-                  form.sport ? styles.selectText : styles.selectPlaceholder
-                }
-              >
-                {form.sport ? label(form.sport) : "Select your sport"}
-              </Text>
-              <Text style={styles.selectArrow}>{sportOpen ? "▲" : "▼"}</Text>
-            </TouchableOpacity>
-            {sportOpen && (
-              <View style={styles.dropdown}>
-                <ScrollView nestedScrollEnabled style={{ maxHeight: 220 }}>
-                  {SPORTS.map((s) => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[
-                        styles.dropdownItem,
-                        form.sport === s && styles.dropdownItemActive,
-                      ]}
-                      onPress={() => {
-                        setField("sport", s);
-                        setSportOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownText,
-                          form.sport === s && styles.dropdownTextActive,
-                        ]}
-                      >
-                        {label(s)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </Field>
-
-          {/* Photo Upload */}
-          <Field label="Passport Size Photo">
-            <TouchableOpacity
-              style={styles.photoUpload}
-              onPress={pickImage}
-              activeOpacity={0.8}
-            >
-              {photo ? (
-                <Image
-                  source={{ uri: photo.uri }}
-                  style={styles.photoPreview}
-                />
-              ) : (
+            <View style={styles.cardBody}>
+              {/* ── Step 0: Personal Info ── */}
+              {step === 0 && (
                 <>
-                  <Text style={styles.photoIcon}>📷</Text>
-                  <Text style={styles.photoText}>Tap to upload photo</Text>
-                  <Text style={styles.photoSub}>
-                    JPG or PNG · Passport size
-                  </Text>
+                  <Field label="FULL NAME" error={errors.name}>
+                    <InputRow icon="👤">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Muhammad Ali"
+                        placeholderTextColor={G.dim}
+                        value={form.name}
+                        onChangeText={(v) => set("name", v)}
+                        autoCapitalize="words"
+                      />
+                    </InputRow>
+                  </Field>
+                  <Field label="EMAIL ADDRESS" error={errors.email}>
+                    <InputRow icon="✉">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="you@email.com"
+                        placeholderTextColor={G.dim}
+                        value={form.email}
+                        onChangeText={(v) => set("email", v)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                    </InputRow>
+                  </Field>
+                  <Field label="PHONE NUMBER" error={errors.phone}>
+                    <InputRow icon="📞">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="03001234567"
+                        placeholderTextColor={G.dim}
+                        value={form.phone}
+                        onChangeText={(v) => set("phone", v)}
+                        keyboardType="phone-pad"
+                      />
+                    </InputRow>
+                  </Field>
+                  <Field label="CNIC NUMBER" error={errors.cnic}>
+                    <InputRow icon="🪪">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="12345-1234567-1"
+                        placeholderTextColor={G.dim}
+                        value={form.cnic}
+                        onChangeText={(v) => set("cnic", formatCnic(v))}
+                        keyboardType="numeric"
+                        maxLength={15}
+                      />
+                    </InputRow>
+                  </Field>
+                  <Field label="ACHIEVEMENTS (Optional)" error="">
+                    <View
+                      style={[styles.inputRow, { alignItems: "flex-start" }]}
+                    >
+                      <Text style={[styles.inputIcon, { marginTop: 14 }]}>
+                        🏅
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            minHeight: 80,
+                            textAlignVertical: "top",
+                            paddingTop: 14,
+                          },
+                        ]}
+                        placeholder="List your sports achievements..."
+                        placeholderTextColor={G.dim}
+                        value={form.achievements}
+                        onChangeText={(v) => set("achievements", v)}
+                        multiline
+                        numberOfLines={3}
+                      />
+                    </View>
+                  </Field>
                 </>
               )}
+
+              {/* ── Step 1: Location & Sport ── */}
+              {step === 1 && (
+                <>
+                  {/* Sport — 3 col compact grid */}
+                  <Field label="YOUR SPORT" error={errors.sport}>
+                    <View style={styles.sportGrid}>
+                      {SPORTS.map((s) => {
+                        const active = form.sport === s.key;
+                        return (
+                          <TouchableOpacity
+                            key={s.key}
+                            style={[
+                              styles.sportChip,
+                              active && styles.sportChipActive,
+                            ]}
+                            onPress={() => set("sport", s.key)}
+                            activeOpacity={0.8}
+                          >
+                            {active && <View style={styles.sportChipDot} />}
+                            <Text
+                              style={[
+                                styles.sportChipText,
+                                active && styles.sportChipTextActive,
+                              ]}
+                            >
+                              {s.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </Field>
+
+                  {/* Province — horizontal scroll */}
+                  <Field label="PROVINCE" error={errors.province}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                    >
+                      {PROVINCES.map((p) => {
+                        const active = form.province === p;
+                        return (
+                          <TouchableOpacity
+                            key={p}
+                            style={[
+                              styles.provinceChip,
+                              active && styles.provinceChipActive,
+                            ]}
+                            onPress={() => {
+                              set("province", p);
+                              set("city", "");
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Text
+                              style={[
+                                styles.provinceChipText,
+                                active && styles.provinceChipTextActive,
+                              ]}
+                            >
+                              {p}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </Field>
+
+                  {/* City — horizontal scroll */}
+                  {form.province ? (
+                    <Field label="CITY" error={errors.city}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+                      >
+                        {(CITIES_BY_PROVINCE[form.province] || []).map((ci) => {
+                          const active = form.city === ci;
+                          return (
+                            <TouchableOpacity
+                              key={ci}
+                              style={[
+                                styles.cityChip,
+                                active && styles.cityChipActive,
+                              ]}
+                              onPress={() => set("city", ci)}
+                              activeOpacity={0.8}
+                            >
+                              <Text
+                                style={[
+                                  styles.cityChipText,
+                                  active && styles.cityChipTextActive,
+                                ]}
+                              >
+                                {ci}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                      {form.city ? (
+                        <View style={styles.citySelectedBar}>
+                          <Text style={styles.citySelectedLabel}>
+                            Selected city:
+                          </Text>
+                          <Text style={styles.citySelectedValue}>
+                            {form.city}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </Field>
+                  ) : null}
+                </>
+              )}
+
+              {/* ── Step 2: Security ── */}
+              {step === 2 && (
+                <>
+                  <View style={styles.securityNote}>
+                    <Text style={styles.securityIcon}>🔐</Text>
+                    <Text style={styles.securityText}>
+                      Your password is encrypted with bcrypt and never stored in
+                      plain text.
+                    </Text>
+                  </View>
+                  <Field label="PASSWORD" error={errors.password}>
+                    <InputRow icon="🔒">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Min 6 characters"
+                        placeholderTextColor={G.dim}
+                        value={form.password}
+                        onChangeText={(v) => set("password", v)}
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </InputRow>
+                  </Field>
+                  <Field
+                    label="CONFIRM PASSWORD"
+                    error={errors.confirmPassword}
+                  >
+                    <InputRow icon="🔒">
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Re-enter password"
+                        placeholderTextColor={G.dim}
+                        value={form.confirmPassword}
+                        onChangeText={(v) => set("confirmPassword", v)}
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </InputRow>
+                  </Field>
+                </>
+              )}
+
+              {/* ── Action button ── */}
+              <TouchableOpacity
+                style={[styles.nextBtn, loading && { opacity: 0.7 }]}
+                onPress={step < 2 ? next : handleSubmit}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={["#0FD97A", "#09C068", "#07A055"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.nextBtnGrad}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.nextBtnText}>
+                        {step < 2 ? `CONTINUE` : "CREATE ACCOUNT"}
+                      </Text>
+                      <Text style={styles.nextBtnArrow}>
+                        {step < 2 ? "→" : "✓"}
+                      </Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ── Footer ── */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/login")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.footerLink}>Sign In</Text>
             </TouchableOpacity>
-          </Field>
-
-          {/* Previous Achievements */}
-          <Text style={styles.sectionLabel}>ACHIEVEMENTS</Text>
-          <Field label="Previous Achievements">
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              placeholder="Describe your sports achievements, titles, medals, competitions..."
-              placeholderTextColor="#444"
-              value={form.achievements}
-              onChangeText={(v) => setField("achievements", v)}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </Field>
-
-          {/* Submit */}
-          <TouchableOpacity
-            style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.submitText}>REGISTER NOW</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => router.push("/login")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.loginLinkText}>
-              Already have an account?{" "}
-              <Text style={styles.loginLinkHighlight}>Login</Text>
-            </Text>
-          </TouchableOpacity>
+          </View>
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -758,262 +724,377 @@ export default function RegisterScreen() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────
+// ── Helper components ─────────────────────────────────────────
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error: string;
+  children: any;
+}) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      {children}
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
+    </View>
+  );
+}
+
+function InputRow({ icon, children }: { icon: string; children: any }) {
+  return (
+    <View style={styles.inputRow}>
+      <Text style={styles.inputIcon}>{icon}</Text>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0A0A0A" },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
-  red: { color: "#EF4444" },
+  root: { flex: 1, backgroundColor: G.bg },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 14,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
-    backgroundColor: "#0A0A0A",
+  patternWrap: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: "hidden",
   },
-  headerLogoImg: { width: 36, height: 36, resizeMode: "contain" },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#F5F5F5",
-    letterSpacing: 0.5,
+  patternLine: {
+    position: "absolute",
+    left: -width,
+    right: -width,
+    height: 1,
+    backgroundColor: "#09C068",
+  },
+  glowTop: {
+    position: "absolute",
+    top: -60,
+    alignSelf: "center",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: G.primary,
+    opacity: 0.07,
   },
 
-  hero: { padding: 24, alignItems: "center" },
-  heroSub: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 3,
-    color: "#EF4444",
-    marginBottom: 10,
-  },
-  heroTitle: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: "#F5F5F5",
-    textAlign: "center",
-    lineHeight: 40,
-    marginBottom: 10,
-  },
-  heroBadge: {
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.5)",
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+
+  // Header
+  header: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
+  backBtn: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    marginBottom: 12,
-  },
-  heroBadgeText: { color: "#EF4444", fontSize: 13, fontWeight: "700" },
-  heroDesc: {
-    fontSize: 13,
-    color: "#999",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-
-  featGrid: { flexDirection: "row", flexWrap: "wrap", padding: 16, gap: 10 },
-  featCard: {
-    width: "47%",
-    backgroundColor: "#181818",
+    backgroundColor: "rgba(9,192,104,0.1)",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
-    borderRadius: 12,
-    padding: 16,
+    borderColor: "rgba(9,192,104,0.3)",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
   },
-  featIcon: { fontSize: 24 },
-  featLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#CCC",
+  backBtnText: { color: G.primary, fontSize: 20, marginTop: -2 },
+  appName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: G.primary,
+    letterSpacing: 5,
+  },
+  headerSub: { fontSize: 10, color: G.muted, letterSpacing: 1, marginTop: 2 },
+
+  // Steps
+  stepsRow: { flexDirection: "row", marginBottom: 24, paddingHorizontal: 8 },
+  stepItem: { flex: 1, alignItems: "center", position: "relative" },
+  stepConnector: {
+    position: "absolute",
+    top: 18,
+    left: "60%",
+    right: "-60%",
+    height: 1.5,
+    backgroundColor: "#2A2A2A",
+    zIndex: 0,
+  },
+  stepCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1.5,
+    borderColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+    marginBottom: 6,
+  },
+  stepActive: {
+    backgroundColor: G.primary,
+    borderColor: G.primary,
+    shadowColor: G.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  stepDone: { backgroundColor: "rgba(9,192,104,0.15)", borderColor: G.primary },
+  stepCheck: { color: G.primary, fontSize: 14, fontWeight: "900" },
+  stepNum: { color: G.dim, fontSize: 12, fontWeight: "800" },
+  stepLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: G.dim,
+    letterSpacing: 0.5,
     textAlign: "center",
   },
 
-  errorBanner: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: "rgba(239,68,68,0.1)",
-    borderWidth: 1,
+  // Card
+  card: {
+    backgroundColor: "rgba(20,20,20,0.95)",
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "#252525",
+    marginBottom: 20,
+  },
+  cardAccent: { height: 3, backgroundColor: G.primary },
+  cardBody: { padding: 20 },
+
+  // Photo
+  photoBtn: { alignSelf: "center", marginVertical: 20 },
+  photoImg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: G.primary,
+  },
+  photoPlaceholder: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#0D0D0D",
+    borderWidth: 1.5,
+    borderColor: "#2A2A2A",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  photoCameraIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(9,192,104,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoLabel: { color: G.muted, fontSize: 10, fontWeight: "700" },
+  photoSub: { color: G.dim, fontSize: 9 },
+
+  // Error
+  errorBox: {
+    backgroundColor: "rgba(239,68,68,0.08)",
+    borderWidth: 0.5,
     borderColor: "rgba(239,68,68,0.3)",
     borderRadius: 10,
     padding: 12,
-  },
-  errorBannerText: { color: "#EF4444", fontSize: 13 },
-
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 2.5,
-    color: "#666",
     marginHorizontal: 20,
-    marginTop: 20,
     marginBottom: 12,
   },
+  errorText: { color: "#EF4444", fontSize: 13 },
 
-  field: { marginHorizontal: 20, marginBottom: 14 },
-  label: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#AAAAAA",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-    textTransform: "uppercase",
+  // Fields
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: G.muted,
+    marginBottom: 8,
   },
-  input: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    color: "#F5F5F5",
-    fontSize: 15,
-    padding: 13,
-  },
-  inputError: { borderColor: "#EF4444" },
-  inputDisabled: { opacity: 0.4 },
-  errorText: { fontSize: 11, color: "#EF4444", marginTop: 4 },
-  textarea: { minHeight: 100, textAlignVertical: "top" },
-  passwordRow: { position: "relative", justifyContent: "center" },
-  passwordInput: { paddingRight: 50 },
-  eyeBtn: { position: "absolute", right: 13, padding: 4 },
-  eyeIcon: { fontSize: 11, color: "#888", fontWeight: "700" },
-
-  selectBtn: {
+  fieldError: { color: "#EF4444", fontSize: 11, marginTop: 4 },
+  inputRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-  },
-  selectText: { color: "#F5F5F5", fontSize: 15 },
-  selectPlaceholder: { color: "#444", fontSize: 15 },
-  selectArrow: { color: "#888", fontSize: 11 },
-  dropdown: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    marginTop: 4,
-    overflow: "hidden",
-  },
-  dropdownItem: {
-    padding: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
-  },
-  dropdownItemActive: { backgroundColor: "rgba(211,47,47,0.15)" },
-  dropdownText: { color: "#CCC", fontSize: 15 },
-  dropdownTextActive: { color: "#EF4444", fontWeight: "600" },
-
-  photoUpload: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1.5,
-    borderColor: "#333",
-    borderStyle: "dashed",
-    borderRadius: 10,
-    padding: 24,
-    alignItems: "center",
-    gap: 8,
-  },
-  photoIcon: { fontSize: 32 },
-  photoText: { fontSize: 14, fontWeight: "600", color: "#CCC" },
-  photoSub: { fontSize: 12, color: "#666" },
-  photoPreview: {
-    width: 90,
-    height: 120,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#D32F2F",
-  },
-
-  submitBtn: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: "#D32F2F",
+    backgroundColor: "#0D0D0D",
+    borderWidth: 0.5,
+    borderColor: "#282828",
     borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
+    paddingHorizontal: 14,
   },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitText: {
+  inputIcon: { fontSize: 14, marginRight: 10, opacity: 0.6 },
+  input: { flex: 1, color: G.text, fontSize: 15, paddingVertical: 13 },
+
+  // Chips
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    backgroundColor: "#0D0D0D",
+    borderWidth: 0.5,
+    borderColor: "#282828",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  chipActive: {
+    backgroundColor: "rgba(9,192,104,0.15)",
+    borderColor: G.primary,
+  },
+  chipText: { color: G.muted, fontSize: 12, fontWeight: "600" },
+  chipTextActive: { color: G.primary, fontWeight: "700" },
+
+  // Security note
+  securityNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "rgba(9,192,104,0.06)",
+    borderWidth: 0.5,
+    borderColor: "rgba(9,192,104,0.2)",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  securityIcon: { fontSize: 20 },
+  securityText: { flex: 1, color: G.muted, fontSize: 12, lineHeight: 18 },
+
+  // Next button
+  nextBtn: { borderRadius: 14, overflow: "hidden", marginTop: 8 },
+  nextBtnGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+  },
+  nextBtnText: {
     color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "900",
     letterSpacing: 2,
   },
+  nextBtnArrow: { color: "#fff", fontSize: 18 },
 
-  loginLink: { marginTop: 16, alignItems: "center" },
-  loginLinkText: { fontSize: 14, color: "#666" },
-  loginLinkHighlight: { color: "#EF4444", fontWeight: "700" },
-
-  successContainer: {
-    flex: 1,
-    alignItems: "center",
+  // Footer
+  footer: {
+    flexDirection: "row",
     justifyContent: "center",
-    padding: 24,
+    alignItems: "center",
   },
-  successCard: {
-    backgroundColor: "#141414",
+  footerText: { color: G.dim, fontSize: 13 },
+  footerLink: { color: G.primary, fontSize: 13, fontWeight: "700" },
+
+  // Sport — 3 col compact grid
+  sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  sportChip: {
+    width: (width - 40 - 40 - 16) / 3,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#0D0D0D",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
-    borderRadius: 20,
-    padding: 32,
-    alignItems: "center",
-    width: "100%",
+    borderColor: "#282828",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
-  successIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(211,47,47,0.15)",
-    borderWidth: 2,
-    borderColor: "#D32F2F",
+  sportChipActive: {
+    backgroundColor: "rgba(9,192,104,0.1)",
+    borderColor: G.primary,
+  },
+  sportChipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: G.primary,
+  },
+  sportChipText: { color: G.muted, fontSize: 11, fontWeight: "600", flex: 1 },
+  sportChipTextActive: { color: G.text, fontWeight: "700" },
+
+  // Province — horizontal scroll
+  provinceChip: {
+    backgroundColor: "#0D0D0D",
+    borderWidth: 0.5,
+    borderColor: "#282828",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  provinceChipActive: {
+    backgroundColor: "rgba(9,192,104,0.1)",
+    borderColor: G.primary,
+  },
+  provinceChipText: { color: G.muted, fontSize: 13, fontWeight: "600" },
+  provinceChipTextActive: { color: G.text, fontWeight: "700" },
+
+  // City — horizontal scroll
+  cityChip: {
+    backgroundColor: "#0D0D0D",
+    borderWidth: 0.5,
+    borderColor: "#282828",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  cityChipActive: {
+    backgroundColor: "rgba(9,192,104,0.1)",
+    borderColor: G.primary,
+  },
+  cityChipText: { color: G.muted, fontSize: 12, fontWeight: "500" },
+  cityChipTextActive: { color: G.text, fontWeight: "700" },
+  citySelectedBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  citySelectedLabel: { color: G.dim, fontSize: 11 },
+  citySelectedValue: { color: G.primary, fontSize: 12, fontWeight: "700" },
+
+  // Success
+  successCard: {
+    backgroundColor: "rgba(20,20,20,0.95)",
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "#252525",
+    width: "100%",
+    alignItems: "center",
+  },
+  successIconWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(9,192,104,0.12)",
+    borderWidth: 1.5,
+    borderColor: "rgba(9,192,104,0.3)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    margin: 28,
+    marginBottom: 0,
   },
-  successCheck: { fontSize: 28, color: "#EF4444" },
+  successEmoji: { fontSize: 42 },
   successTitle: {
     fontSize: 28,
     fontWeight: "900",
-    color: "#F5F5F5",
+    color: G.text,
+    marginTop: 16,
     marginBottom: 8,
   },
   successMsg: {
+    color: G.muted,
     fontSize: 14,
-    color: "#999",
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 24,
+    paddingHorizontal: 28,
+    marginBottom: 28,
   },
-  successDivider: {
-    width: "100%",
-    height: 0.5,
-    backgroundColor: "#2A2A2A",
-    marginBottom: 24,
-  },
-  loginNowBtn: {
-    width: "100%",
-    backgroundColor: "#D32F2F",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  loginNowText: {
+  successBtn: { width: "100%", borderRadius: 0, overflow: "hidden" },
+  successBtnGrad: { paddingVertical: 16, alignItems: "center" },
+  successBtnText: {
     color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "900",
     letterSpacing: 2,
   },
-  registerAnotherBtn: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-  },
-  registerAnotherText: { color: "#666", fontSize: 14, fontWeight: "600" },
 });

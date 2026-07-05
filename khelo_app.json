@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Khelo Punjab",
+    "slug": "khelo-mobile",
+    "scheme": "khelo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#061A0F",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#061A0F"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.khelopunjab.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#061A0F"
+      },
+      "package": "com.khelopunjab.app",
+      "versionCode": 1,
+      "jsEngine": "hermes",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true,
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "plugins": [
+      ["expo-camera", {
+        "cameraPermission": "Allow Khelo Punjab to access your camera to record sports videos.",
+        "microphonePermission": "Allow Khelo Punjab to access your microphone to record video audio."
+      }],
+      ["expo-video", {
+        "supportsBackgroundPlayback": false,
+        "supportsPictureInPicture": false
+      }]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

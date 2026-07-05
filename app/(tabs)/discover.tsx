@@ -1,4 +1,3 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -8,10 +7,7 @@ import {
   Dimensions,
   FlatList,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -19,64 +15,219 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../../src/config/api";
 import { useAuth } from "../../src/context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
+const CARD_W = (width - 48) / 2;
 const THUMB = (width - 52) / 3;
 
-// ── Types ─────────────────────────────────────────────────────
-interface AthleteResult {
-  id: string;
-  name: string;
-  sport: string;
-  city: string;
-  province: string;
-  photo_url?: string;
-  status: string;
-  achievements?: string;
-}
+const G = {
+  bg: "#0A0A0A",
+  surface: "#141414",
+  border: "#2A2A2A",
+  primary: "#09C068",
+  gold: "#F5C842",
+  text: "#F5F5F5",
+  muted: "#888888",
+  dim: "#444444",
+};
 
-interface VideoResult {
-  id: string;
-  url: string;
-  caption: string;
-  sport: string;
-  city: string;
-  likes: number;
-  views: number;
-  comments: number;
-  uploaded_at: string;
-  athletes: { id: string; name: string; photo_url?: string; status: string };
-}
-
-const SPORTS_LIST = [
-  { name: "Cricket", icon: "cricket", sport: "cricket" },
-  { name: "Football", icon: "soccer", sport: "football" },
-  { name: "Boxing", icon: "boxing-glove", sport: "boxing" },
-  { name: "Athletics", icon: "run", sport: "athletics" },
-  { name: "Hockey", icon: "hockey-sticks", sport: "hockey" },
-  { name: "Swimming", icon: "swim", sport: "swimming" },
-  { name: "Badminton", icon: "badminton", sport: "badminton" },
-  { name: "Volleyball", icon: "volleyball", sport: "volleyball" },
-  { name: "Wrestling", icon: "arm-flex", sport: "wrestling" },
-  { name: "Weightlifting", icon: "weight-lifter", sport: "weightlifting" },
-  { name: "Tennis", icon: "tennis", sport: "tennis" },
-  { name: "Squash", icon: "table-tennis", sport: "squash" },
+// ── Sport config with gradient colors ────────────────────────
+const SPORTS = [
+  {
+    name: "Cricket",
+    sport: "cricket",
+    color1: "#1a3a1a",
+    color2: "#0d1f0d",
+    accent: "#09C068",
+    label: "BAT & BALL",
+  },
+  {
+    name: "Football",
+    sport: "football",
+    color1: "#1a1a3a",
+    color2: "#0d0d1f",
+    accent: "#4A7BF5",
+    label: "THE BEAUTIFUL GAME",
+  },
+  {
+    name: "Boxing",
+    sport: "boxing",
+    color1: "#3a1a1a",
+    color2: "#1f0d0d",
+    accent: "#EF4444",
+    label: "COMBAT SPORT",
+  },
+  {
+    name: "Athletics",
+    sport: "athletics",
+    color1: "#2a1a3a",
+    color2: "#160d1f",
+    accent: "#A855F7",
+    label: "TRACK & FIELD",
+  },
+  {
+    name: "Hockey",
+    sport: "hockey",
+    color1: "#1a2a3a",
+    color2: "#0d161f",
+    accent: "#06B6D4",
+    label: "FIELD SPORT",
+  },
+  {
+    name: "Swimming",
+    sport: "swimming",
+    color1: "#0d2a3a",
+    color2: "#071620",
+    accent: "#0EA5E9",
+    label: "AQUATICS",
+  },
+  {
+    name: "Badminton",
+    sport: "badminton",
+    color1: "#2a2a1a",
+    color2: "#16160d",
+    accent: "#EAB308",
+    label: "RACKET SPORT",
+  },
+  {
+    name: "Volleyball",
+    sport: "volleyball",
+    color1: "#3a2a1a",
+    color2: "#1f160d",
+    accent: "#F97316",
+    label: "TEAM SPORT",
+  },
+  {
+    name: "Wrestling",
+    sport: "wrestling",
+    color1: "#3a1a2a",
+    color2: "#1f0d16",
+    accent: "#EC4899",
+    label: "COMBAT SPORT",
+  },
+  {
+    name: "Weightlifting",
+    sport: "weightlifting",
+    color1: "#1a3a2a",
+    color2: "#0d1f16",
+    accent: "#10B981",
+    label: "STRENGTH SPORT",
+  },
+  {
+    name: "Tennis",
+    sport: "tennis",
+    color1: "#2a3a1a",
+    color2: "#161f0d",
+    accent: "#84CC16",
+    label: "RACKET SPORT",
+  },
+  {
+    name: "Squash",
+    sport: "squash",
+    color1: "#3a3a1a",
+    color2: "#1f1f0d",
+    accent: "#F59E0B",
+    label: "RACKET SPORT",
+  },
 ];
 
-// ── Athlete card ──────────────────────────────────────────────
-function AthleteCard({ item }: { item: AthleteResult }) {
-  const router = useRouter();
-
-  function formatSport(s: string) {
-    return s?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
+// ── Sport card ────────────────────────────────────────────────
+function SportCard({
+  item,
+  onPress,
+}: {
+  item: (typeof SPORTS)[0];
+  onPress: () => void;
+}) {
   return (
     <TouchableOpacity
-      style={styles.athleteCard}
+      style={[sc.card, { backgroundColor: item.color1 }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      {/* Top accent line */}
+      <View style={[sc.accentLine, { backgroundColor: item.accent }]} />
+
+      {/* Sport initial large background letter */}
+      <Text style={[sc.bgLetter, { color: item.color2 }]}>
+        {item.name.charAt(0)}
+      </Text>
+
+      {/* Content */}
+      <View style={sc.content}>
+        <View style={[sc.dot, { backgroundColor: item.accent }]} />
+        <Text style={sc.sublabel}>{item.label}</Text>
+        <Text style={sc.name}>{item.name.toUpperCase()}</Text>
+        <View
+          style={[
+            sc.pill,
+            {
+              backgroundColor: item.accent + "22",
+              borderColor: item.accent + "44",
+            },
+          ]}
+        >
+          <Text style={[sc.pillText, { color: item.accent }]}>EXPLORE →</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const sc = StyleSheet.create({
+  card: {
+    width: CARD_W,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+    minHeight: 130,
+    position: "relative",
+  },
+  accentLine: { height: 3, width: "100%" },
+  bgLetter: {
+    position: "absolute",
+    bottom: -10,
+    right: -8,
+    fontSize: 90,
+    fontWeight: "900",
+    opacity: 0.4,
+    letterSpacing: -5,
+  },
+  content: { padding: 14, gap: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, marginBottom: 2 },
+  sublabel: {
+    color: "#666",
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+  name: {
+    color: "#F5F5F5",
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  pill: {
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    borderWidth: 0.5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  pillText: { fontSize: 9, fontWeight: "800", letterSpacing: 1 },
+});
+
+// ── Athlete card ──────────────────────────────────────────────
+function AthleteCard({ item }: { item: any }) {
+  const router = useRouter();
+  return (
+    <TouchableOpacity
+      style={ac.card}
       onPress={() =>
         router.push({
           pathname: "/public-profile",
@@ -85,65 +236,135 @@ function AthleteCard({ item }: { item: AthleteResult }) {
       }
       activeOpacity={0.85}
     >
-      {/* Avatar */}
-      {item.photo_url ? (
-        <Image source={{ uri: item.photo_url }} style={styles.athleteAvatar} />
-      ) : (
-        <View style={styles.athleteAvatarPlaceholder}>
-          <Text style={styles.athleteAvatarText}>
-            {item.name?.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-      )}
-      {/* Info */}
-      <View style={styles.athleteInfo}>
-        <Text style={styles.athleteName}>{item.name}</Text>
-        <View style={styles.athleteTags}>
-          <View style={styles.tagRed}>
-            <Text style={styles.tagRedText}>{formatSport(item.sport)}</Text>
+      <View style={ac.left}>
+        {item.photo_url ? (
+          <Image source={{ uri: item.photo_url }} style={ac.avatar} />
+        ) : (
+          <View style={ac.avatarPlaceholder}>
+            <Text style={ac.avatarText}>
+              {item.name?.charAt(0).toUpperCase()}
+            </Text>
           </View>
-          {item.city ? (
-            <View style={styles.tagDark}>
-              <Text style={styles.tagDarkText}>{item.city}</Text>
+        )}
+        {item.status === "approved" && (
+          <View style={ac.verifiedBadge}>
+            <Text style={ac.verifiedCheck}>✓</Text>
+          </View>
+        )}
+      </View>
+      <View style={ac.info}>
+        <Text style={ac.name}>{item.name}</Text>
+        <View style={ac.tags}>
+          {item.sport && (
+            <View style={ac.tagGreen}>
+              <Text style={ac.tagGreenText}>
+                {item.sport
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (c: string) => c.toUpperCase())}
+              </Text>
             </View>
-          ) : null}
+          )}
+          {item.city && (
+            <View style={ac.tagDark}>
+              <Text style={ac.tagDarkText}>{item.city}</Text>
+            </View>
+          )}
         </View>
-        {item.achievements ? (
-          <Text style={styles.athleteBio} numberOfLines={1}>
+        {item.achievements && (
+          <Text style={ac.bio} numberOfLines={1}>
             {item.achievements}
           </Text>
-        ) : null}
+        )}
       </View>
-      {/* Verified */}
-      {item.status === "approved" && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark" size={9} color="#fff" />
-        </View>
-      )}
+      <Text style={ac.arrow}>›</Text>
     </TouchableOpacity>
   );
 }
 
-// ── Video thumbnail card ──────────────────────────────────────
-function VideoThumbCard({ item }: { item: VideoResult }) {
-  const [thumbnail, setThumbnail] = useState<string | null>(null);
-  const [thumbLoading, setThumbLoading] = useState(true);
+const ac = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: G.surface,
+    borderWidth: 0.5,
+    borderColor: G.border,
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+  },
+  left: { position: "relative" },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: G.primary,
+  },
+  avatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#1C1C1C",
+    borderWidth: 1.5,
+    borderColor: G.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { color: G.primary, fontSize: 20, fontWeight: "900" },
+  verifiedBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: G.gold,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: G.bg,
+  },
+  verifiedCheck: { color: G.bg, fontSize: 9, fontWeight: "900" },
+  info: { flex: 1, gap: 5 },
+  name: { color: G.text, fontSize: 15, fontWeight: "700" },
+  tags: { flexDirection: "row", gap: 6 },
+  tagGreen: {
+    backgroundColor: "rgba(9,192,104,0.12)",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 0.5,
+    borderColor: "rgba(9,192,104,0.3)",
+  },
+  tagGreenText: { color: G.primary, fontSize: 10, fontWeight: "700" },
+  tagDark: {
+    backgroundColor: "#1C1C1C",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  tagDarkText: { color: G.muted, fontSize: 10 },
+  bio: { color: G.dim, fontSize: 11 },
+  arrow: { color: G.dim, fontSize: 22, marginRight: 4 },
+});
+
+// ── Video thumbnail ───────────────────────────────────────────
+function VideoThumbCard({ item, onPress }: { item: any; onPress: () => void }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const { uri } = await VideoThumbnails.getThumbnailAsync(item.url, {
-          time: 0,
-        });
-        if (!cancelled) setThumbnail(uri);
-      } catch {
-        // keep null — will show placeholder
-      } finally {
-        if (!cancelled) setThumbLoading(false);
-      }
-    }
-    load();
+    VideoThumbnails.getThumbnailAsync(item.url, { time: 0 })
+      .then(({ uri }) => {
+        if (!cancelled) setThumb(uri);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -155,342 +376,98 @@ function VideoThumbCard({ item }: { item: VideoResult }) {
   }
 
   return (
-    <View style={styles.thumbCard}>
-      {/* Thumbnail */}
-      <View style={styles.thumbBg}>
-        {thumbLoading ? (
-          <ActivityIndicator color="#EF4444" size="small" />
-        ) : thumbnail ? (
-          <Image source={{ uri: thumbnail }} style={styles.thumbImg} />
+    <TouchableOpacity
+      style={{ width: THUMB, marginBottom: 6 }}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View
+        style={{
+          width: THUMB,
+          height: THUMB * 1.5,
+          backgroundColor: G.surface,
+          borderRadius: 10,
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color={G.primary} size="small" />
+        ) : thumb ? (
+          <Image
+            source={{ uri: thumb }}
+            style={{ width: THUMB, height: THUMB * 1.5, resizeMode: "cover" }}
+          />
         ) : (
-          <Ionicons name="videocam-outline" size={24} color="rgba(255,255,255,0.3)" />
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ color: G.dim, fontSize: 24 }}>🎬</Text>
+          </View>
         )}
-        {/* Play overlay */}
-        <View style={styles.thumbPlayOverlay}>
-          <View style={styles.thumbPlayCircle}>
-            <Ionicons name="play" size={12} color="#fff" />
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, marginLeft: 2 }}>
+              ▶
+            </Text>
           </View>
         </View>
-        {/* View count badge */}
-        <View style={styles.thumbViewsBadge}>
-          <Ionicons name="eye-outline" size={9} color="#fff" style={{ marginRight: 3 }} />
-          <Text style={styles.thumbViews}>{fmt(item.views ?? 0)}</Text>
+        <View
+          style={{
+            position: "absolute",
+            bottom: 5,
+            left: 5,
+            backgroundColor: "rgba(0,0,0,0.65)",
+            borderRadius: 6,
+            paddingHorizontal: 5,
+            paddingVertical: 2,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
+            👁 {fmt(item.views ?? 0)}
+          </Text>
         </View>
       </View>
-      {/* Caption below */}
       {item.caption ? (
-        <Text style={styles.thumbCaption} numberOfLines={2}>
+        <Text
+          style={{
+            color: G.muted,
+            fontSize: 10,
+            paddingHorizontal: 2,
+            paddingTop: 4,
+          }}
+          numberOfLines={1}
+        >
           {item.caption}
         </Text>
       ) : null}
-      {/* Uploader */}
-      <Text style={styles.thumbUser} numberOfLines={1}>
-        @{item.athletes?.name?.toLowerCase().replace(/\s+/g, "_")}
-      </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-// ── Comments sheet ────────────────────────────────────────────
-function CommentsSheet({
-  visible,
-  videoId,
-  onClose,
-  athlete,
-}: {
-  visible: boolean;
-  videoId: string | null;
-  onClose: () => void;
-  athlete: any;
-}) {
-  const [comments, setComments] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [posting, setPosting] = useState(false);
-
-  useEffect(() => {
-    if (visible && videoId) {
-      setLoading(true);
-      fetch(`${API_BASE_URL}/api/videos/${videoId}/comments`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.status === "success") {
-            setComments(d.comments);
-            setTotal(d.total);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
-  }, [visible, videoId]);
-
-  async function postComment() {
-    if (!text.trim() || !athlete?.id) return;
-    setPosting(true);
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/videos/${videoId}/comments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            athlete_id: athlete.id,
-            name: athlete.name,
-            text: text.trim(),
-          }),
-        },
-      );
-      const d = await res.json();
-      if (res.ok) {
-        setComments((p) => [d.comment, ...p]);
-        setTotal((p) => p + 1);
-        setText("");
-      }
-    } catch {
-    } finally {
-      setPosting(false);
-    }
-  }
-
-  async function deleteComment(commentId: string) {
-    try {
-      await fetch(
-        `${API_BASE_URL}/api/videos/${videoId}/comments/${commentId}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ athlete_id: athlete?.id }),
-        },
-      );
-      setComments((p) => p.filter((c) => c.id !== commentId));
-      setTotal((p) => Math.max(0, p - 1));
-    } catch {}
-  }
-
-  function timeAgo(iso: string) {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    const hrs = Math.floor(mins / 60);
-    const days = Math.floor(hrs / 24);
-    if (days > 0) return `${days}d ago`;
-    if (hrs > 0) return `${hrs}h ago`;
-    if (mins > 0) return `${mins}m ago`;
-    return "just now";
-  }
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={cmtSt.kav}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
-        {/* Dimmed backdrop — absolute so it doesn't push the sheet */}
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-
-        <View style={cmtSt.sheet}>
-          <View style={cmtSt.header}>
-            <Text style={cmtSt.headerTitle}>{total} Comments</Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-              <Ionicons name="close" size={18} color="#666" />
-            </TouchableOpacity>
-          </View>
-          {loading ? (
-            <View style={cmtSt.center}>
-              <ActivityIndicator color="#EF4444" />
-            </View>
-          ) : comments.length === 0 ? (
-            <View style={cmtSt.center}>
-              <Text style={cmtSt.emptyText}>No comments yet — be the first!</Text>
-            </View>
-          ) : (
-            <ScrollView style={cmtSt.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {comments.map((c) => (
-                <View key={c.id} style={cmtSt.row}>
-                  <View style={cmtSt.avatar}>
-                    <Text style={cmtSt.avatarText}>
-                      {c.name?.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={cmtSt.body}>
-                    <View style={cmtSt.top}>
-                      <Text style={cmtSt.name}>{c.name}</Text>
-                      <Text style={cmtSt.time}>{timeAgo(c.created_at)}</Text>
-                    </View>
-                    <Text style={cmtSt.commentText}>{c.text}</Text>
-                  </View>
-                  {c.athlete_id === athlete?.id && (
-                    <TouchableOpacity
-                      onPress={() => deleteComment(c.id)}
-                      style={cmtSt.deleteBtn}
-                    >
-                      <Ionicons name="trash-outline" size={14} color="#666" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-              <View style={{ height: 20 }} />
-            </ScrollView>
-          )}
-          <View style={cmtSt.inputRow}>
-            <View style={cmtSt.inputAvatar}>
-              <Text style={cmtSt.inputAvatarText}>
-                {athlete?.name?.charAt(0).toUpperCase() ?? "?"}
-              </Text>
-            </View>
-            <TextInput
-              style={cmtSt.input}
-              placeholder="Add a comment..."
-              placeholderTextColor="#444"
-              value={text}
-              onChangeText={setText}
-              maxLength={300}
-              multiline
-            />
-            <TouchableOpacity
-              style={[
-                cmtSt.sendBtn,
-                (!text.trim() || posting) && { opacity: 0.4 },
-              ]}
-              onPress={postComment}
-              disabled={!text.trim() || posting}
-              activeOpacity={0.8}
-            >
-              {posting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Ionicons name="send" size={14} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-const cmtSt = StyleSheet.create({
-  kav: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  sheet: {
-    backgroundColor: "#141414",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: height * 0.75,
-    borderTopWidth: 0.5,
-    borderColor: "#2A2A2A",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
-  },
-  headerTitle: { color: "#F5F5F5", fontSize: 15, fontWeight: "700" },
-  center: { height: 120, alignItems: "center", justifyContent: "center" },
-  emptyText: { color: "#555", fontSize: 13 },
-  list: { maxHeight: height * 0.45 },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1C1C1C",
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-    flexShrink: 0,
-  },
-  avatarText: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  body: { flex: 1 },
-  top: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  name: { color: "#F5F5F5", fontSize: 13, fontWeight: "700" },
-  time: { color: "#555", fontSize: 11 },
-  commentText: { color: "#CCC", fontSize: 13, lineHeight: 18 },
-  deleteBtn: { padding: 6 },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    gap: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: "#2A2A2A",
-  },
-  inputAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  inputAvatarText: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  input: {
-    flex: 1,
-    backgroundColor: "#1C1C1C",
-    borderWidth: 0.5,
-    borderColor: "#333",
-    borderRadius: 20,
-    color: "#F5F5F5",
-    fontSize: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    maxHeight: 80,
-  },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
-
-// ── Single full-screen video card for discover feed ───────────
-function DiscoverVideoCard({
-  video,
-  isActive,
-  athlete,
-  onCommentPress,
-}: {
-  video: VideoResult;
-  isActive: boolean;
-  athlete: any;
-  onCommentPress: (id: string) => void;
-}) {
+// ── Discover feed modal ───────────────────────────────────────
+function DiscoverFeedCard({ video, isActive, athlete, onCommentPress }: any) {
   const player = useVideoPlayer(video.url, (p) => {
     p.loop = true;
     p.muted = false;
   });
-
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(video.likes ?? 0);
-  const [views, setViews] = useState(video.views ?? 0);
-  const [comments, setComments] = useState(video.comments ?? 0);
+  const [views, setViews] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
   const viewTracked = useRef(false);
 
@@ -534,150 +511,142 @@ function DiscoverVideoCard({
     } else {
       player.pause();
     }
-  }, [isActive]);
+  }, [isActive, athlete?.id, player, video.id]);
 
   async function handleLike() {
     if (!athlete?.id || likeLoading) return;
     setLikeLoading(true);
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikes((p) => (wasLiked ? Math.max(0, p - 1) : p + 1));
+    const was = liked;
+    setLiked(!was);
+    setLikes((p: number) => (was ? Math.max(0, p - 1) : p + 1));
     try {
       const res = await fetch(`${API_BASE_URL}/api/videos/${video.id}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ athlete_id: athlete.id }),
       });
-      const data = await res.json();
+      const d = await res.json();
       if (res.ok) {
-        setLiked(data.liked);
-        setLikes(data.likes);
+        setLiked(d.liked);
+        setLikes(d.likes);
       } else {
-        setLiked(wasLiked);
-        setLikes((p) => (wasLiked ? p + 1 : Math.max(0, p - 1)));
+        setLiked(was);
+        setLikes((p: number) => (was ? p + 1 : Math.max(0, p - 1)));
       }
     } catch {
-      setLiked(wasLiked);
-      setLikes((p) => (wasLiked ? p + 1 : Math.max(0, p - 1)));
+      setLiked(was);
+      setLikes((p: number) => (was ? p + 1 : Math.max(0, p - 1)));
     } finally {
       setLikeLoading(false);
     }
   }
 
   function fmt(n: number) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
     if (n >= 1000) return (n / 1000).toFixed(1) + "K";
     return String(n);
   }
 
-  function formatHandle(name: string) {
-    return "@" + name?.toLowerCase().replace(/\s+/g, "_");
-  }
-
-  function formatSport(s: string) {
-    return s?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
   return (
-    <View style={feedStyles.card}>
+    <View style={{ width, height, backgroundColor: "#000" }}>
       <VideoView
         player={player}
-        style={{ width, height }}
+        style={StyleSheet.absoluteFillObject}
         contentFit="cover"
         nativeControls={false}
       />
-
-      {/* Bottom gradient */}
-      <View style={feedStyles.gradient} />
-
-      {/* Right action bar */}
-      <View style={feedStyles.actionBar}>
-        {/* Avatar */}
-        <View style={feedStyles.avatarWrap}>
-          {video.athletes?.photo_url ? (
-            <Image
-              source={{ uri: video.athletes.photo_url }}
-              style={feedStyles.avatarImg}
-            />
-          ) : (
-            <View style={feedStyles.avatar}>
-              <Text style={feedStyles.avatarText}>
-                {video.athletes?.name?.charAt(0).toUpperCase() ?? "?"}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Like */}
+      <View
+        style={{
+          position: "absolute",
+          right: 12,
+          bottom: 100,
+          alignItems: "center",
+          gap: 16,
+        }}
+      >
         <TouchableOpacity
-          style={feedStyles.actionBtn}
+          style={{ alignItems: "center", gap: 4 }}
           onPress={handleLike}
           disabled={likeLoading}
-          activeOpacity={0.8}
         >
           <View
             style={[
-              feedStyles.actionIconWrap,
-              liked && feedStyles.actionIconWrapLiked,
+              dfc.iconWrap,
+              liked && {
+                backgroundColor: "rgba(9,192,104,0.25)",
+                borderColor: G.primary,
+              },
             ]}
           >
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={22}
-              color={liked ? "#EF4444" : "#fff"}
-            />
+            <Text
+              style={[
+                { fontSize: 18, color: "#fff" },
+                liked && { color: G.primary },
+              ]}
+            >
+              {liked ? "♥" : "♡"}
+            </Text>
           </View>
-          <Text style={feedStyles.actionCount}>{fmt(likes)}</Text>
+          <Text style={dfc.count}>{fmt(likes)}</Text>
         </TouchableOpacity>
-
-        {/* Comments */}
         <TouchableOpacity
-          style={feedStyles.actionBtn}
+          style={{ alignItems: "center", gap: 4 }}
           onPress={() => onCommentPress(video.id)}
-          activeOpacity={0.8}
         >
-          <View style={feedStyles.actionIconWrap}>
+          <View style={dfc.iconWrap}>
             <Image
               source={require("../../assets/icons/chat.png")}
-              style={feedStyles.actionIconImg}
+              style={{ width: 18, height: 18, tintColor: "#fff" }}
             />
           </View>
-          <Text style={feedStyles.actionCount}>{fmt(comments)}</Text>
+          <Text style={dfc.count}>{fmt(video.comments ?? 0)}</Text>
         </TouchableOpacity>
-
-        {/* Views */}
-        <View style={feedStyles.actionBtn}>
-          <View style={feedStyles.actionIconWrap}>
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <View style={dfc.iconWrap}>
             <Image
               source={require("../../assets/icons/eye.png")}
-              style={feedStyles.actionIconImg}
+              style={{ width: 18, height: 18, tintColor: "#fff" }}
             />
           </View>
-          <Text style={feedStyles.actionCount}>{fmt(views)}</Text>
+          <Text style={dfc.count}>{fmt(views)}</Text>
         </View>
       </View>
-
-      {/* Bottom info */}
-      <View style={feedStyles.info}>
-        <View style={feedStyles.userRow}>
-          <Text style={feedStyles.handle}>
-            {formatHandle(video.athletes?.name ?? "athlete")}
-          </Text>
-          {video.athletes?.status === "approved" && (
-            <View style={feedStyles.verifiedBadge}>
-              <Ionicons name="checkmark" size={9} color="#fff" />
-            </View>
-          )}
-        </View>
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 60,
+          padding: 14,
+          paddingBottom: 70,
+        }}
+      >
         {video.caption ? (
-          <Text style={feedStyles.caption} numberOfLines={2}>
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 13,
+              lineHeight: 18,
+              marginBottom: 8,
+            }}
+            numberOfLines={2}
+          >
             {video.caption}
           </Text>
         ) : null}
         {video.sport ? (
-          <View style={feedStyles.sportTag}>
-            <Text style={feedStyles.sportTagText}>
-              {formatSport(video.sport)}
+          <View
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: G.primary,
+              borderRadius: 20,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
+              {video.sport
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (c: string) => c.toUpperCase())}
             </Text>
           </View>
         ) : null}
@@ -686,119 +655,41 @@ function DiscoverVideoCard({
   );
 }
 
-const feedStyles = StyleSheet.create({
-  card: { width, height, backgroundColor: "#0A0A0A" },
-  video: { ...StyleSheet.absoluteFillObject },
-  gradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 280,
-    backgroundColor: "rgba(0,0,0,0.0)",
-  },
-  actionBar: {
-    position: "absolute",
-    right: 12,
-    bottom: 100,
-    alignItems: "center",
-    gap: 20,
-  },
-  avatarWrap: { marginBottom: 4 },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#D32F2F",
-    borderWidth: 2,
-    borderColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  avatarText: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  actionBtn: { alignItems: "center", gap: 5 },
-  actionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.35)",
+const dfc = StyleSheet.create({
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.45)",
     borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
-  actionIconWrapLiked: {
-    backgroundColor: "rgba(239,68,68,0.2)",
-    borderColor: "rgba(239,68,68,0.5)",
-  },
-  actionIconImg: { width: 22, height: 22, tintColor: "#fff" },
-  actionCount: { fontSize: 11, color: "#fff", fontWeight: "700" },
-  info: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 70,
-    padding: 16,
-    paddingBottom: 20,
-  },
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-  handle: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  verifiedBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  caption: { color: "#fff", fontSize: 13, lineHeight: 18, marginBottom: 8 },
-  sportTag: {
-    alignSelf: "flex-start",
-    backgroundColor: "#D32F2F",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  sportTagText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  count: { fontSize: 10, color: "#fff", fontWeight: "700" },
 });
 
-// ── Discover feed modal ───────────────────────────────────────
 function DiscoverFeedModal({
   visible,
   videos,
   startIndex,
   onClose,
   athlete,
-}: {
-  visible: boolean;
-  videos: VideoResult[];
-  startIndex: number;
-  onClose: () => void;
-  athlete: any;
-}) {
-  const { top: topInset } = useSafeAreaInsets();
+}: any) {
   const [activeIndex, setActiveIndex] = useState(startIndex);
-  const [commentVideoId, setCommentVideoId] = useState<string | null>(null);
   const flatRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (visible) {
       setActiveIndex(startIndex);
-      setTimeout(() => {
-        flatRef.current?.scrollToIndex({ index: startIndex, animated: false });
-      }, 50);
+      setTimeout(
+        () =>
+          flatRef.current?.scrollToIndex({
+            index: startIndex,
+            animated: false,
+          }),
+        50,
+      );
     }
   }, [visible, startIndex]);
 
@@ -815,18 +706,16 @@ function DiscoverFeedModal({
     >
       <View style={{ flex: 1, backgroundColor: "#000" }}>
         <StatusBar hidden={true} />
-
-        {/* Back arrow */}
         <TouchableOpacity
           style={{
             position: "absolute",
-            top: topInset + 12,
+            top: 20,
             left: 16,
             zIndex: 10,
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.7)",
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -835,12 +724,10 @@ function DiscoverFeedModal({
         >
           <Text style={{ color: "#fff", fontSize: 20, marginTop: -2 }}>←</Text>
         </TouchableOpacity>
-
-        {/* Counter */}
         <View
           style={{
             position: "absolute",
-            top: topInset + 16,
+            top: 24,
             left: 60,
             right: 60,
             zIndex: 10,
@@ -849,7 +736,7 @@ function DiscoverFeedModal({
         >
           <Text
             style={{
-              color: "rgba(255,255,255,0.6)",
+              color: "rgba(9,192,104,0.8)",
               fontSize: 12,
               fontWeight: "600",
             }}
@@ -857,17 +744,16 @@ function DiscoverFeedModal({
             {activeIndex + 1} / {videos.length}
           </Text>
         </View>
-
         <FlatList
           ref={flatRef}
           data={videos}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <DiscoverVideoCard
+            <DiscoverFeedCard
               video={item}
               isActive={index === activeIndex}
               athlete={athlete}
-              onCommentPress={(id) => setCommentVideoId(id)}
+              onCommentPress={() => {}}
             />
           )}
           pagingEnabled
@@ -886,34 +772,26 @@ function DiscoverFeedModal({
           windowSize={5}
           initialScrollIndex={startIndex}
         />
-        <CommentsSheet
-          visible={!!commentVideoId}
-          videoId={commentVideoId}
-          onClose={() => setCommentVideoId(null)}
-          athlete={athlete}
-        />
       </View>
     </Modal>
   );
 }
 
-// ── Main Screen ───────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────
 export default function DiscoverScreen() {
   const { athlete } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"athletes" | "videos">("athletes");
-  const [athleteResults, setAthleteResults] = useState<AthleteResult[]>([]);
-  const [videoResults, setVideoResults] = useState<VideoResult[]>([]);
+  const [athleteResults, setAthleteResults] = useState<any[]>([]);
+  const [videoResults, setVideoResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Feed modal state
   const [feedOpen, setFeedOpen] = useState(false);
-  const [feedStartIndex, setFeedStartIndex] = useState(0);
+  const [feedStart, setFeedStart] = useState(0);
+  const debounceRef = useRef<any>(null);
 
-  // ── Search ────────────────────────────────────────────────────
   const doSearch = useCallback(
     async (q: string, currentTab: "athletes" | "videos") => {
       if (!q.trim()) {
@@ -929,35 +807,14 @@ export default function DiscoverScreen() {
           const res = await fetch(
             `${API_BASE_URL}/api/search/athletes?q=${encodeURIComponent(q)}`,
           );
-          const data = await res.json();
-          if (res.ok) setAthleteResults(data.data ?? []);
+          const d = await res.json();
+          if (res.ok) setAthleteResults(d.data ?? []);
         } else {
           const res = await fetch(
             `${API_BASE_URL}/api/search/videos?q=${encodeURIComponent(q)}`,
           );
-          const data = await res.json();
-          if (res.ok) {
-            const videoList = data.data ?? [];
-            // Fetch real Redis view counts for all results in parallel
-            const withRealViews = await Promise.all(
-              videoList.map(async (v: VideoResult) => {
-                try {
-                  const vRes = await fetch(
-                    `${API_BASE_URL}/api/videos/${v.id}/views`,
-                  );
-                  const vData = await vRes.json();
-                  return {
-                    ...v,
-                    views:
-                      vData.status === "success" ? vData.views : (v.views ?? 0),
-                  };
-                } catch {
-                  return v;
-                }
-              }),
-            );
-            setVideoResults(withRealViews);
-          }
+          const d = await res.json();
+          if (res.ok) setVideoResults(d.data ?? []);
         }
       } catch {
       } finally {
@@ -969,11 +826,8 @@ export default function DiscoverScreen() {
 
   function handleQueryChange(text: string) {
     setQuery(text);
-    // Debounce — wait 400ms after typing stops
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      doSearch(text, tab);
-    }, 400);
+    debounceRef.current = setTimeout(() => doSearch(text, tab), 400);
   }
 
   function handleTabSwitch(newTab: "athletes" | "videos") {
@@ -981,431 +835,254 @@ export default function DiscoverScreen() {
     if (query.trim()) doSearch(query, newTab);
   }
 
-  function clearSearch() {
-    setQuery("");
-    setAthleteResults([]);
-    setVideoResults([]);
-    setSearched(false);
-  }
-
   const isSearching = query.trim().length > 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <View style={styles.root}>
       <StatusBar hidden={true} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.heading}>DISCOVER</Text>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View>
+          <Text style={styles.heading}>DISCOVER</Text>
+          <Text style={styles.headingSub}>
+            Find athletes & videos across Punjab
+          </Text>
+        </View>
       </View>
 
-      {/* Search bar */}
-      <View style={styles.searchRow}>
-        <Ionicons name="search" size={17} color="#555" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search athletes, sports, hashtags..."
-          placeholderTextColor="#444"
-          value={query}
-          onChangeText={handleQueryChange}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity
-            onPress={clearSearch}
-            activeOpacity={0.7}
-            style={styles.clearBtn}
-          >
-            <Ionicons name="close-circle" size={18} color="#444" />
-          </TouchableOpacity>
-        )}
+      {/* ── Search bar ── */}
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIconText}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search athletes, sports, cities..."
+            placeholderTextColor={G.dim}
+            value={query}
+            onChangeText={handleQueryChange}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setQuery("");
+                setAthleteResults([]);
+                setVideoResults([]);
+                setSearched(false);
+              }}
+              style={styles.clearBtn}
+            >
+              <Text style={{ color: G.muted, fontSize: 14 }}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Toggle tabs — only show when searching */}
+      {/* ── Toggle tabs when searching ── */}
       {isSearching && (
         <View style={styles.toggleRow}>
           <TouchableOpacity
             style={[
               styles.toggleBtn,
-              tab === "athletes" && styles.toggleBtnActive,
+              tab === "athletes" && styles.toggleActive,
             ]}
             onPress={() => handleTabSwitch("athletes")}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name="people-outline"
-              size={14}
-              color={tab === "athletes" ? "#fff" : "#666"}
-              style={{ marginRight: 5 }}
-            />
             <Text
               style={[
                 styles.toggleText,
                 tab === "athletes" && styles.toggleTextActive,
               ]}
             >
-              Athletes
+              👤 Athletes
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              tab === "videos" && styles.toggleBtnActive,
-            ]}
+            style={[styles.toggleBtn, tab === "videos" && styles.toggleActive]}
             onPress={() => handleTabSwitch("videos")}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name="videocam-outline"
-              size={14}
-              color={tab === "videos" ? "#fff" : "#666"}
-              style={{ marginRight: 5 }}
-            />
             <Text
               style={[
                 styles.toggleText,
                 tab === "videos" && styles.toggleTextActive,
               ]}
             >
-              Videos
+              🎬 Videos
             </Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Results / default browse */}
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color="#EF4444" size="large" />
-          <Text style={styles.loadingText}>Searching...</Text>
+          <ActivityIndicator color={G.primary} size="large" />
+          <Text style={{ color: G.muted, fontSize: 14, marginTop: 12 }}>
+            Searching...
+          </Text>
         </View>
       ) : isSearching ? (
-        // ── SEARCH RESULTS ───────────────────────────────────
         tab === "athletes" ? (
           athleteResults.length === 0 && searched ? (
             <View style={styles.centered}>
-              <Ionicons name="search-outline" size={48} color="#333" />
+              <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
               <Text style={styles.emptyTitle}>No athletes found</Text>
-              <Text style={styles.emptyText}>
-                Try a different name, sport or city
+              <Text style={{ color: G.muted, fontSize: 13 }}>
+                Try a different name or sport
               </Text>
             </View>
           ) : (
             <FlatList
-              key="athletes-list"
+              key="athletes"
               data={athleteResults}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => <AthleteCard item={item} />}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={{ paddingBottom: 20, paddingTop: 8 }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             />
           )
         ) : videoResults.length === 0 && searched ? (
           <View style={styles.centered}>
-            <Ionicons name="videocam-outline" size={48} color="#333" />
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>🎬</Text>
             <Text style={styles.emptyTitle}>No videos found</Text>
-            <Text style={styles.emptyText}>
-              Try searching with hashtags like #cricket
-            </Text>
           </View>
         ) : (
           <FlatList
-            key="videos-grid"
+            key="videos"
             data={videoResults}
             keyExtractor={(item) => item.id}
             numColumns={3}
             renderItem={({ item, index }) => (
-              <TouchableOpacity
-                activeOpacity={0.85}
+              <VideoThumbCard
+                item={item}
                 onPress={() => {
-                  setFeedStartIndex(index);
+                  setFeedStart(index);
                   setFeedOpen(true);
                 }}
-              >
-                <VideoThumbCard item={item} />
-              </TouchableOpacity>
+              />
             )}
-            contentContainerStyle={styles.gridContent}
-            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingBottom: 20,
+              paddingTop: 8,
+            }}
+            columnWrapperStyle={{ gap: 6, justifyContent: "space-between" }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           />
         )
       ) : (
-        // ── DEFAULT BROWSE ────────────────────────────────────
+        /* ── Sport grid ── */
         <FlatList
-          data={SPORTS_LIST}
+          key="sports"
+          data={SPORTS}
           keyExtractor={(item) => item.sport}
+          numColumns={2}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.sportRow}
-              activeOpacity={0.75}
+            <SportCard
+              item={item}
               onPress={() => {
                 setQuery(item.name);
-                handleQueryChange(item.name);
                 handleTabSwitch("athletes");
+                doSearch(item.name, "athletes");
               }}
-            >
-              <View style={styles.sportIconWrap}>
-                <MaterialCommunityIcons
-                  name={item.icon as any}
-                  size={22}
-                  color="#EF4444"
-                />
-              </View>
-              <Text style={styles.sportRowName}>{item.name}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#333" />
-            </TouchableOpacity>
+            />
           )}
-          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={{
+            gap: 10,
+            paddingHorizontal: 20,
+            marginBottom: 10,
+          }}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 30 }}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <View style={styles.browseLabelRow}>
-              <MaterialCommunityIcons name="trophy-outline" size={14} color="#EF4444" />
-              <Text style={styles.browseLabel}>BROWSE BY SPORT</Text>
+            <View style={styles.browseHeader}>
+              <View style={styles.browseLine} />
+              <Text style={styles.browseLabel}>SELECT A SPORT</Text>
+              <View style={styles.browseLine} />
             </View>
           }
         />
       )}
 
-      {/* Discover video feed modal */}
       <DiscoverFeedModal
         visible={feedOpen}
         videos={videoResults}
-        startIndex={feedStartIndex}
+        startIndex={feedStart}
         onClose={() => setFeedOpen(false)}
         athlete={athlete}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0A0A0A" },
+  root: { flex: 1, backgroundColor: G.bg },
 
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  header: { paddingHorizontal: 20, paddingBottom: 16 },
   heading: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "900",
-    color: "#EF4444",
+    color: G.primary,
     letterSpacing: 2,
   },
+  headingSub: { fontSize: 12, color: G.muted, marginTop: 3 },
 
-  // Search bar
-  searchRow: {
+  searchWrap: { paddingHorizontal: 20, marginBottom: 14 },
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#161616",
+    backgroundColor: G.surface,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: G.border,
     borderRadius: 14,
-    marginHorizontal: 20,
-    marginBottom: 12,
     paddingHorizontal: 14,
   },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, color: "#F5F5F5", fontSize: 14, paddingVertical: 13 },
+  searchIconText: { fontSize: 16, marginRight: 8 },
+  searchInput: { flex: 1, color: G.text, fontSize: 14, paddingVertical: 13 },
   clearBtn: { padding: 6 },
-  clearIcon: { color: "#555", fontSize: 14 },
 
-  // Toggle
   toggleRow: {
     flexDirection: "row",
     marginHorizontal: 20,
-    marginBottom: 14,
-    backgroundColor: "#141414",
+    marginBottom: 12,
+    backgroundColor: G.surface,
     borderRadius: 12,
     padding: 4,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: G.border,
   },
   toggleBtn: {
     flex: 1,
     paddingVertical: 9,
     borderRadius: 10,
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
   },
-  toggleBtnActive: { backgroundColor: "#D32F2F" },
-  toggleText: { color: "#666", fontSize: 13, fontWeight: "700" },
+  toggleActive: { backgroundColor: G.primary },
+  toggleText: { color: G.muted, fontSize: 13, fontWeight: "700" },
   toggleTextActive: { color: "#fff" },
 
-  // Athlete card
-  athleteCard: {
+  browseHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 20,
-    marginBottom: 10,
-    backgroundColor: "#141414",
-    borderWidth: 0.5,
-    borderColor: "#2A2A2A",
-    borderRadius: 14,
-    padding: 12,
-  },
-  athleteAvatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
-  athleteAvatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  athleteAvatarText: { color: "#fff", fontSize: 20, fontWeight: "900" },
-  athleteInfo: { flex: 1 },
-  athleteName: {
-    color: "#F5F5F5",
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 5,
-  },
-  athleteTags: { flexDirection: "row", gap: 6, marginBottom: 4 },
-  athleteBio: { color: "#666", fontSize: 12 },
-  verifiedBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#D32F2F",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-
-  tagRed: {
-    backgroundColor: "#D32F2F",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  tagRedText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  tagDark: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 0.5,
-    borderColor: "#333",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  tagDarkText: { color: "#CCC", fontSize: 10 },
-
-  // Video thumb
-  thumbCard: { width: THUMB, marginBottom: 8 },
-  thumbBg: {
-    width: THUMB,
-    height: THUMB * 1.4,
-    backgroundColor: "#1C1C1C",
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  thumbImg: {
-    width: THUMB,
-    height: THUMB * 1.4,
-    borderRadius: 8,
-    resizeMode: "cover",
-  },
-  thumbPlay: { color: "rgba(255,255,255,0.4)", fontSize: 22 },
-  thumbPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumbPlayCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumbViewsBadge: {
-    position: "absolute",
-    bottom: 5,
-    left: 5,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  thumbViews: { color: "#fff", fontSize: 9, fontWeight: "700" },
-  thumbCaption: {
-    color: "#CCC",
-    fontSize: 10,
-    paddingHorizontal: 4,
-    paddingTop: 4,
-    lineHeight: 14,
-  },
-  thumbUser: {
-    color: "#555",
-    fontSize: 10,
-    paddingHorizontal: 4,
-    paddingBottom: 2,
-  },
-
-  // Sports list
-  sportRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#181818",
-    gap: 14,
-  },
-  sportIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#1A0808",
-    borderWidth: 0.5,
-    borderColor: "#3A1515",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sportRowName: {
-    flex: 1,
-    color: "#EFEFEF",
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: 0.1,
-  },
-
-  browseLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 10,
-  },
-  browseLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#555",
-    letterSpacing: 1.5,
-  },
-
-  // States
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 14,
+    marginTop: 4,
   },
-  loadingText: { color: "#666", fontSize: 14 },
-  emptyTitle: { color: "#F5F5F5", fontSize: 18, fontWeight: "800", marginTop: 8 },
-  emptyText: { color: "#666", fontSize: 13, textAlign: "center" },
+  browseLine: { flex: 1, height: 0.5, backgroundColor: G.border },
+  browseLabel: {
+    color: G.dim,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
 
-  listContent: { paddingBottom: 20 },
-  gridContent: { paddingHorizontal: 20, paddingBottom: 20 },
-  gridRow: { gap: 6, justifyContent: "space-between" },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
+  emptyTitle: { color: G.text, fontSize: 18, fontWeight: "800" },
 });
