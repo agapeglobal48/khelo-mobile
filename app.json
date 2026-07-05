@@ -1,8 +1,7 @@
 {
   "expo": {
     "name": "Khelo Punjab",
-    "slug": "khelo-punjab",
-    "owner": "agapeglobal",
+    "slug": "khelo-mobile",
     "scheme": "khelo",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,9 +13,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#062510"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.khelopunjab.app",
@@ -29,12 +26,7 @@
       },
       "package": "com.khelopunjab.app",
       "versionCode": 1,
-      "jsEngine": "hermes",
-      "softwareKeyboardLayoutMode": "pan",
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+      "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
       [
@@ -50,12 +42,9 @@
           "supportsBackgroundPlayback": false,
           "supportsPictureInPicture": false
         }
-      ],
-      "expo-font",
-      "expo-router"
+      ]
     ],
     "extra": {
-      "router": {},
       "eas": {
         "projectId": "05bd7090-67a0-4057-8277-edd4b836de35"
       }
