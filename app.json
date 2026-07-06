@@ -26,7 +26,8 @@
       },
       "package": "com.khelopunjab.app",
       "versionCode": 1,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "jsEngine": "jsc"
     },
     "plugins": [
       [
@@ -48,6 +49,7 @@
       "eas": {
         "projectId": "05bd7090-67a0-4057-8277-edd4b836de35"
       }
-    }
+    },
+    "jsEngine": "jsc"
   }
 }
