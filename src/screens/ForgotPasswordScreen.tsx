@@ -167,7 +167,7 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0A0A0A" },
+  root: { flex: 1, backgroundColor: "#080E0A" },
   scroll: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
 
   header: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#0F2415",
     borderWidth: 0.5,
     borderColor: "#333",
     alignItems: "center",
@@ -202,22 +202,22 @@ const styles = StyleSheet.create({
     color: "#555",
     lineHeight: 20,
     marginBottom: 28,
-    backgroundColor: "#141414",
+    backgroundColor: "#0C1A10",
     borderRadius: 10,
     padding: 14,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#1A3A20",
   },
 
   errorBox: {
-    backgroundColor: "rgba(239,68,68,0.1)",
+    backgroundColor: "rgba(9,192,104,0.1)",
     borderWidth: 0.5,
-    borderColor: "#EF4444",
+    borderColor: "#09C068",
     borderRadius: 10,
     padding: 12,
     marginBottom: 20,
   },
-  errorText: { color: "#EF4444", fontSize: 13 },
+  errorText: { color: "#09C068", fontSize: 13 },
 
   label: {
     fontSize: 11,
@@ -227,9 +227,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#141414",
+    backgroundColor: "#0C1A10",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#1A3A20",
     borderRadius: 12,
     color: "#F5F5F5",
     fontSize: 15,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
 
   btn: {
-    backgroundColor: "#D32F2F",
+    backgroundColor: "#09C068",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",

@@ -405,11 +405,13 @@ function VideoThumbCard({ item, onPress }: { item: any; onPress: () => void }) {
           </View>
         )}
         <View
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
         >
           <View
             style={{
@@ -464,6 +466,7 @@ function DiscoverFeedCard({ video, isActive, athlete, onCommentPress }: any) {
   const player = useVideoPlayer(video.url, (p) => {
     p.loop = true;
     p.muted = false;
+    p.showNowPlayingNotification = false;
   });
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(video.likes ?? 0);
@@ -550,7 +553,7 @@ function DiscoverFeedCard({ video, isActive, athlete, onCommentPress }: any) {
     <View style={{ width, height, backgroundColor: "#000" }}>
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
       />

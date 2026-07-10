@@ -67,6 +67,7 @@ function PersonalVideoCard({ video, isActive, athlete }: any) {
   const player = useVideoPlayer(video.url, (p) => {
     p.loop = true;
     p.muted = false;
+    p.showNowPlayingNotification = false;
   });
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
@@ -136,7 +137,7 @@ function PersonalVideoCard({ video, isActive, athlete }: any) {
     <View style={{ width, height, backgroundColor: "#000" }}>
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
       />
@@ -494,7 +495,7 @@ export default function CreateScreen() {
     } finally {
       setLoadingVideos(false);
     }
-  }, [athlete?.id]);
+  }, [athlete]);
 
   useEffect(() => {
     fetchMyVideos();
@@ -587,15 +588,11 @@ export default function CreateScreen() {
       const formData = new FormData();
       const filename = videoUri.split("/").pop() || "video.mp4";
       const ext = filename.split(".").pop()?.toLowerCase() || "mp4";
-      const mimeMap: Record<string, string> = {
-        mp4: "video/mp4",
-        mov: "video/quicktime",
-        avi: "video/x-msvideo",
-      };
+      // Always use mp4 mime type for compatibility
       formData.append("video", {
         uri: videoUri,
-        name: filename,
-        type: mimeMap[ext] ?? "video/mp4",
+        name: "video.mp4",
+        type: "video/mp4",
       } as any);
       formData.append("athlete_id", athlete.id);
       formData.append("caption", caption.trim());
@@ -605,6 +602,9 @@ export default function CreateScreen() {
       const response = await fetch(`${API_BASE_URL}/api/videos/upload`, {
         method: "POST",
         body: formData,
+        headers: {
+          Accept: "application/json",
+        },
       });
       clearInterval(interval);
       if (response.ok) {
@@ -620,10 +620,14 @@ export default function CreateScreen() {
         setMode("preview");
         Alert.alert("Upload Failed", data.message || "Please try again.");
       }
-    } catch {
+    } catch (err: any) {
       clearInterval(interval);
       setMode("preview");
-      Alert.alert("Connection Error", "Please try again.");
+      const msg =
+        err?.name === "AbortError"
+          ? "Upload timed out. Try a shorter video."
+          : "Upload failed. Check your connection.";
+      Alert.alert("Upload Failed", msg);
     }
   }
 

@@ -323,6 +323,7 @@ function VideoCard({
   const player = useVideoPlayer(item.url, (p) => {
     p.loop = true;
     p.muted = false;
+    p.showNowPlayingNotification = false;
   });
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
@@ -625,6 +626,7 @@ export default function HomeScreen() {
         setLoading(false);
         setRefreshing(false);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [athlete?.id],
   );
@@ -770,7 +772,15 @@ const styles = StyleSheet.create({
   catTextActive: { color: "#fff" },
 
   videoCard: { width, height, backgroundColor: G.bg },
-  video: { ...StyleSheet.absoluteFillObject },
+  video: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
 
   actionBar: {
     position: "absolute",

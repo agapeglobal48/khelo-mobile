@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  logoImg: { width: 105, height: 105 },
+  logoImg: { width: 60, height: 60 },
   appName: {
     fontSize: 52,
     fontWeight: "900",

@@ -26,7 +26,12 @@
       },
       "package": "com.khelopunjab.app",
       "versionCode": 1,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "jsEngine": "hermes",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true,
+      "allowBackup": false,
+      "backgroundColor": "#080E0A"
     },
     "plugins": [
       [
@@ -44,11 +49,11 @@
         }
       ]
     ],
-    "owner": "agapeglobal",
     "extra": {
       "eas": {
         "projectId": "05bd7090-67a0-4057-8277-edd4b836de35"
       }
-    }
+    },
+    "owner": "agapeglobal"
   }
 }

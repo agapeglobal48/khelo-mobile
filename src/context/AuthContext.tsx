@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
-const STORAGE_KEY = "@tno_athlete";
+const STORAGE_KEY = "@khelo_athlete";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [athlete, setAthleteState] = useState<Athlete | null>(null);

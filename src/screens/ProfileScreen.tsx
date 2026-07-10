@@ -64,6 +64,7 @@ function VideoCard({
   const player = useVideoPlayer(video.url, (p) => {
     p.loop = true;
     p.muted = false;
+    p.showNowPlayingNotification = false;
   });
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
@@ -131,7 +132,7 @@ function VideoCard({
     <View style={{ width, height, backgroundColor: "#000" }}>
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
       />
@@ -542,7 +543,7 @@ export default function ProfileScreen() {
         if (isRefresh) setRefreshing(false);
       }
     },
-    [athlete?.id],
+    [athlete],
   );
 
   useEffect(() => {
@@ -587,7 +588,7 @@ export default function ProfileScreen() {
           {/* Background gradient */}
           <LinearGradient
             colors={["#062510", "#0A1A0F", "#080E0A"]}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
 
           {/* Diagonal lines pattern */}

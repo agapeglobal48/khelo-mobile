@@ -269,9 +269,9 @@ export default function RegisterScreen() {
           <View style={styles.successIconWrap}>
             <Text style={styles.successEmoji}>🎉</Text>
           </View>
-          <Text style={styles.successTitle}>You are In!</Text>
+          <Text style={styles.successTitle}>You're In!</Text>
           <Text style={styles.successMsg}>
-            Welcome to Khelo Punjab — Pakistans premier sports talent platform.
+            Welcome to Khelo Punjab — Pakistan's premier sports talent platform.
           </Text>
           <TouchableOpacity
             style={styles.successBtn}
@@ -360,7 +360,7 @@ export default function RegisterScreen() {
             <View style={{ flex: 1, alignItems: "center" }}>
               <Text style={styles.appName}>KHELO</Text>
               <Text style={styles.headerSub}>
-                Join Pakistans Sports Platform
+                Join Pakistan's Sports Platform
               </Text>
             </View>
             <View style={{ width: 40 }} />

@@ -297,6 +297,7 @@ function VideoCard({ video, isActive, viewer, onCommentPress }: any) {
   const player = useVideoPlayer(video.url, (p) => {
     p.loop = true;
     p.muted = false;
+    p.showNowPlayingNotification = false;
   });
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(video.likes ?? 0);
@@ -382,7 +383,7 @@ function VideoCard({ video, isActive, viewer, onCommentPress }: any) {
     <View style={{ width, height, backgroundColor: G.bg }}>
       <VideoView
         player={player}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
       />
@@ -814,7 +815,7 @@ export default function PublicProfileScreen() {
         setRefreshing(false);
       }
     },
-    [athleteId, viewer?.id],
+    [athleteId, viewer],
   );
 
   useEffect(() => {
