@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -20,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+import { SportIcon } from "../components/SportIcon";
 
 const { width, height } = Dimensions.get("window");
 const THUMB = (width - 52) / 3;
@@ -73,10 +75,12 @@ function VideoCard({
   const [likeLoading, setLikeLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     if (!viewer?.id) return;
     fetch(`${API_BASE_URL}/api/videos/${video.id}/like?athlete_id=${viewer.id}`)
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         if (d.status === "success") {
           setLiked(d.liked);
           setLikes(d.likes);
@@ -86,9 +90,13 @@ function VideoCard({
     fetch(`${API_BASE_URL}/api/videos/${video.id}/views`)
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         if (d.status === "success") setViews(d.views);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [video.id, viewer?.id]);
 
   useEffect(() => {
@@ -159,9 +167,11 @@ function VideoCard({
           disabled={likeLoading}
         >
           <View style={[vc.iconWrap, liked && vc.iconWrapLiked]}>
-            <Text style={[vc.icon, liked && { color: G.primary }]}>
-              {liked ? "♥" : "♡"}
-            </Text>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={20}
+              color={liked ? G.primary : "#fff"}
+            />
           </View>
           <Text style={vc.count}>{fmt(likes)}</Text>
         </TouchableOpacity>
@@ -361,7 +371,7 @@ function VideoFeedModal({ visible, videos, startIndex, onClose, viewer }: any) {
           }}
           onPress={onClose}
         >
-          <Text style={{ color: "#fff", fontSize: 20, marginTop: -2 }}>←</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View
           style={{
@@ -445,18 +455,17 @@ function VideoThumb({ item, onPress }: any) {
         ) : thumb ? (
           <Image source={{ uri: thumb }} style={styles.thumbImg} />
         ) : (
-          <Text style={{ fontSize: 24 }}>🎬</Text>
+          <Ionicons name="film-outline" size={24} color={G.muted} />
         )}
         <View style={styles.thumbOverlay}>
           <View style={styles.thumbPlay}>
-            <Text style={{ color: "#fff", fontSize: 12, marginLeft: 2 }}>
-              ▶
-            </Text>
+            <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
           </View>
         </View>
-        <View style={styles.thumbViews}>
+        <View style={[styles.thumbViews, { flexDirection: "row", alignItems: "center", gap: 3 }]}>
+          <Ionicons name="eye" size={10} color="#fff" />
           <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
-            👁 {fmt(item.views ?? 0)}
+            {fmt(item.views ?? 0)}
           </Text>
         </View>
       </View>
@@ -498,9 +507,17 @@ export default function ProfileScreen() {
   const [stats, setStats] = useState({ followers: 0, following: 0, videos: 0 });
   const [videos, setVideos] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [feedStart, setFeedStart] = useState(0);
   const [showLogout, setShowLogout] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const fetchData = useCallback(
     async (isRefresh = false) => {
@@ -512,6 +529,7 @@ export default function ProfileScreen() {
           fetch(`${API_BASE_URL}/api/videos/mine?athlete_id=${athlete.id}`),
         ]);
         const [sData, vData] = await Promise.all([sRes.json(), vRes.json()]);
+        if (!mountedRef.current) return;
         if (sRes.ok)
           setStats({
             followers: sData.followers,
@@ -536,11 +554,13 @@ export default function ProfileScreen() {
               }
             }),
           );
-          setVideos(withViews);
+          if (mountedRef.current) setVideos(withViews);
         }
+        if (mountedRef.current) setLoadError(!sRes.ok || !vRes.ok);
       } catch {
+        if (mountedRef.current) setLoadError(true);
       } finally {
-        if (isRefresh) setRefreshing(false);
+        if (isRefresh && mountedRef.current) setRefreshing(false);
       }
     },
     [athlete],
@@ -620,14 +640,14 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/edit-profile")}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 15 }}>✏️</Text>
+                <Ionicons name="pencil" size={16} color={G.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.signOutCircle}
                 onPress={() => setShowLogout(true)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.signOutText}>↩</Text>
+                <Ionicons name="log-out-outline" size={18} color="#EF4444" />
               </TouchableOpacity>
             </View>
           </View>
@@ -652,7 +672,7 @@ export default function ProfileScreen() {
             </View>
             {athlete.status === "approved" && (
               <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>✓</Text>
+                <Ionicons name="checkmark" size={12} color={G.bg} />
               </View>
             )}
           </View>
@@ -663,19 +683,34 @@ export default function ProfileScreen() {
           {/* Tags */}
           <View style={styles.tagsRow}>
             {sport ? (
-              <View style={styles.tagGreen}>
-                <Text style={styles.tagGreenText}>🏏 {sport}</Text>
+              <View style={[styles.tagGreen, { flexDirection: "row", alignItems: "center", gap: 5 }]}>
+                <SportIcon sport={athlete.sport} size={13} color="#fff" />
+                <Text style={styles.tagGreenText}>{sport}</Text>
               </View>
             ) : null}
             {athlete.city ? (
-              <View style={styles.tagRed}>
-                <Text style={styles.tagRedText}>📍 {athlete.city}</Text>
+              <View style={[styles.tagRed, { flexDirection: "row", alignItems: "center", gap: 5 }]}>
+                <Ionicons name="location" size={13} color="#fff" />
+                <Text style={styles.tagRedText}>{athlete.city}</Text>
               </View>
             ) : null}
           </View>
 
           <View style={{ height: 28 }} />
         </View>
+
+        {/* ── Load error banner ── */}
+        {loadError && (
+          <TouchableOpacity
+            style={styles.errorBanner}
+            onPress={() => fetchData()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.errorBannerText}>
+              Couldn't refresh your profile. Tap to retry.
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── Stats ── */}
         <View style={styles.statsCard}>
@@ -717,7 +752,7 @@ export default function ProfileScreen() {
         {videos.length === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconWrap}>
-              <Text style={{ fontSize: 32 }}>🎬</Text>
+              <Ionicons name="film-outline" size={32} color={G.muted} />
             </View>
             <Text style={styles.emptyTitle}>No videos yet</Text>
             <Text style={styles.emptySubtitle}>
@@ -763,7 +798,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.menuSheet}>
             <View style={styles.logoutIconWrap}>
-              <Text style={styles.logoutIconText}>↩</Text>
+              <Ionicons name="log-out-outline" size={28} color="#EF4444" />
             </View>
             <Text style={styles.logoutTitle}>Sign Out</Text>
             <Text style={styles.logoutSubtitle}>
@@ -952,6 +987,23 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tagRedText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+
+  errorBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: "rgba(229,57,53,0.12)",
+    borderWidth: 0.5,
+    borderColor: G.red,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  errorBannerText: {
+    color: G.red,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
   // Stats
   statsCard: {

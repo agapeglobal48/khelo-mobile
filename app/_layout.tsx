@@ -12,7 +12,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inTabsGroup = segments[0] === "(tabs)";
-    const inAuthGroup = ["login", "register", "index"].includes(
+    const inAuthGroup = ["login", "register", "index", "forgot-password"].includes(
       segments[0] as string,
     );
     const inStackScreen = ["edit-profile", "public-profile"].includes(
@@ -86,6 +86,7 @@ export default function RootLayout() {
               <Stack.Screen name="index" />
               <Stack.Screen name="register" />
               <Stack.Screen name="login" />
+              <Stack.Screen name="forgot-password" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="edit-profile" />
               <Stack.Screen name="public-profile" />

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +24,7 @@ import { API_BASE_URL } from "../../src/config/api";
 import { useAuth } from "../../src/context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
+const TAB_BAR_HEIGHT = 52;
 
 const G = {
   bg: "#0A0A0A",
@@ -157,7 +159,7 @@ function CommentsModal({ visible, videoId, onClose, athlete }: any) {
         <View style={cmt.header}>
           <Text style={cmt.headerTitle}>{total} Comments</Text>
           <TouchableOpacity onPress={onClose}>
-            <Text style={cmt.closeBtn}>✕</Text>
+            <Ionicons name="close" size={18} color={G.muted} />
           </TouchableOpacity>
         </View>
         {loading ? (
@@ -216,7 +218,7 @@ function CommentsModal({ visible, videoId, onClose, athlete }: any) {
             {posting ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={cmt.sendIcon}>➤</Text>
+              <Ionicons name="send" size={14} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -319,6 +321,7 @@ function VideoCard({
   isFollowing,
   onFollowToggle,
   screenFocused,
+  pageHeight,
 }: any) {
   const player = useVideoPlayer(item.url, (p) => {
     p.loop = true;
@@ -408,7 +411,7 @@ function VideoCard({
   }
 
   return (
-    <View style={styles.videoCard}>
+    <View style={[styles.videoCard, { height: pageHeight }]}>
       <VideoView
         player={player}
         style={styles.video}
@@ -425,9 +428,11 @@ function VideoCard({
           activeOpacity={0.8}
         >
           <View style={[styles.iconWrap, liked && styles.iconWrapLiked]}>
-            <Text style={[styles.iconText, liked && { color: G.primary }]}>
-              {liked ? "♥" : "♡"}
-            </Text>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={18}
+              color={liked ? G.primary : "#fff"}
+            />
           </View>
           <Text style={styles.actionCount}>{fmt(likes)}</Text>
         </TouchableOpacity>
@@ -479,7 +484,7 @@ function VideoCard({
           </Text>
           {item.athletes?.status === "approved" && (
             <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedCheck}>✓</Text>
+              <Ionicons name="checkmark" size={9} color={G.bg} />
             </View>
           )}
           {!isOwnVideo && (
@@ -529,6 +534,11 @@ function VideoCard({
 export default function HomeScreen() {
   const { athlete } = useAuth();
   const insets = useSafeAreaInsets();
+  const tabBarHeight =
+    TAB_BAR_HEIGHT +
+    Math.max(insets.bottom, Platform.OS === "android" ? 8 : 4) +
+    0.5;
+  const pageHeight = height - tabBarHeight;
 
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -672,7 +682,14 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.8}
             >
-              {c === "For You" && <Text style={styles.catFire}>🏅 </Text>}
+              {c === "For You" && (
+                <Ionicons
+                  name="medal"
+                  size={12}
+                  color={G.gold}
+                  style={{ marginRight: 4 }}
+                />
+              )}
               <Text
                 style={[
                   styles.catText,
@@ -693,7 +710,7 @@ export default function HomeScreen() {
         </View>
       ) : error ? (
         <View style={styles.center}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <Ionicons name="alert-circle" size={40} color="#EF4444" />
           <Text style={styles.errorTitle}>Connection Error</Text>
           <TouchableOpacity
             style={styles.retryBtn}
@@ -704,7 +721,7 @@ export default function HomeScreen() {
         </View>
       ) : videos.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>🏅</Text>
+          <Ionicons name="trophy-outline" size={48} color={G.muted} />
           <Text style={styles.emptyTitle}>No videos yet</Text>
           <Text style={styles.emptyText}>Be the first to post!</Text>
         </View>
@@ -721,17 +738,18 @@ export default function HomeScreen() {
               isFollowing={!!followMap[item.athletes?.id]}
               onFollowToggle={handleFollowToggle}
               screenFocused={screenFocused}
+              pageHeight={pageHeight}
             />
           )}
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          snapToInterval={height}
+          snapToInterval={pageHeight}
           decelerationRate="fast"
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
           getItemLayout={(_, index) => ({
-            length: height,
-            offset: height * index,
+            length: pageHeight,
+            offset: pageHeight * index,
             index,
           })}
           refreshing={refreshing}
@@ -785,7 +803,7 @@ const styles = StyleSheet.create({
   actionBar: {
     position: "absolute",
     right: 12,
-    bottom: 100,
+    bottom: 24,
     alignItems: "center",
     gap: 14,
   },
@@ -814,7 +832,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 62,
     padding: 14,
-    paddingBottom: 70,
+    paddingBottom: 18,
   },
   userRow: {
     flexDirection: "row",

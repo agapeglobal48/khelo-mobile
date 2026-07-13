@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -70,7 +71,7 @@ export default function ForgotPasswordScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <Text style={styles.backBtnText}>←</Text>
+              <Ionicons name="chevron-back" size={22} color="#CCC" />
             </TouchableOpacity>
             <Image
               source={require("../../assets/icon.png")}
@@ -87,8 +88,14 @@ export default function ForgotPasswordScreen() {
               </Text>
 
               {error ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>⚠ {error}</Text>
+                <View
+                  style={[
+                    styles.errorBox,
+                    { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+                  ]}
+                >
+                  <Ionicons name="alert-circle" size={14} color="#09C068" />
+                  <Text style={styles.errorText}>{error}</Text>
                 </View>
               ) : null}
 
@@ -126,7 +133,7 @@ export default function ForgotPasswordScreen() {
             /* Success state */
             <>
               <View style={styles.successIconWrap}>
-                <Text style={styles.successEmoji}>📧</Text>
+                <Ionicons name="mail-open-outline" size={64} color="#09C068" />
               </View>
               <Text style={styles.title}>Check Your Email</Text>
               <Text style={styles.subtitle}>

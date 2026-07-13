@@ -55,19 +55,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (raw) {
           try {
             setAthleteState(JSON.parse(raw));
-          } catch {}
+          } catch (err) {
+            console.warn("[Auth] failed to parse stored session", err);
+          }
         }
       })
-      .catch(() => {})
+      .catch((err) => console.warn("[Auth] failed to load stored session", err))
       .finally(() => setIsLoading(false));
   }, []);
 
   const setAthlete = useCallback((a: Athlete | null) => {
     setAthleteState(a);
     if (a) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(a)).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(a)).catch((err) =>
+        console.warn("[Auth] failed to persist session", err),
+      );
     } else {
-      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      AsyncStorage.removeItem(STORAGE_KEY).catch((err) =>
+        console.warn("[Auth] failed to clear session", err),
+      );
     }
   }, []);
 
@@ -76,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(
-        () => {},
+        (err) => console.warn("[Auth] failed to persist session update", err),
       );
       return updated;
     });
@@ -84,7 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setAthleteState(null);
-    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    AsyncStorage.removeItem(STORAGE_KEY).catch((err) =>
+      console.warn("[Auth] failed to clear session on logout", err),
+    );
   }, []);
 
   return (

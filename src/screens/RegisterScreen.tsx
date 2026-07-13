@@ -1,7 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -190,8 +191,8 @@ export default function RegisterScreen() {
         e.name = "Full name required";
       if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
         e.email = "Valid email required";
-      if (!form.phone.trim() || form.phone.length < 10)
-        e.phone = "Valid phone required";
+      if (!/^\d{11}$/.test(form.phone.trim()))
+        e.phone = "Enter an 11-digit phone number";
       if (!form.cnic.trim() || !/^\d{5}-\d{7}-\d$/.test(form.cnic))
         e.cnic = "Format: 12345-1234567-1";
     }
@@ -267,7 +268,7 @@ export default function RegisterScreen() {
         />
         <View style={styles.successCard}>
           <View style={styles.successIconWrap}>
-            <Text style={styles.successEmoji}>🎉</Text>
+            <Ionicons name="checkmark-circle" size={48} color={G.primary} />
           </View>
           <Text style={styles.successTitle}>You're In!</Text>
           <Text style={styles.successMsg}>
@@ -282,9 +283,13 @@ export default function RegisterScreen() {
               colors={["#0FD97A", "#09C068", "#07A055"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.successBtnGrad}
+              style={[
+                styles.successBtnGrad,
+                { flexDirection: "row", justifyContent: "center", gap: 8 },
+              ]}
             >
-              <Text style={styles.successBtnText}>GO TO LOGIN →</Text>
+              <Text style={styles.successBtnText}>GO TO LOGIN</Text>
+              <Ionicons name="arrow-forward" size={16} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
@@ -355,7 +360,7 @@ export default function RegisterScreen() {
               onPress={() => (step === 0 ? router.back() : back())}
               activeOpacity={0.8}
             >
-              <Text style={styles.backBtnText}>←</Text>
+              <Ionicons name="chevron-back" size={22} color={G.primary} />
             </TouchableOpacity>
             <View style={{ flex: 1, alignItems: "center" }}>
               <Text style={styles.appName}>KHELO</Text>
@@ -378,7 +383,11 @@ export default function RegisterScreen() {
                   ]}
                 >
                   {i < step ? (
-                    <Text style={styles.stepCheck}>✓</Text>
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={G.primary}
+                    />
                   ) : (
                     <Text
                       style={[styles.stepNum, i === step && { color: "#fff" }]}
@@ -420,7 +429,7 @@ export default function RegisterScreen() {
                 ) : (
                   <View style={styles.photoPlaceholder}>
                     <View style={styles.photoCameraIcon}>
-                      <Text style={{ fontSize: 22 }}>📷</Text>
+                      <Ionicons name="camera" size={22} color={G.primary} />
                     </View>
                     <Text style={styles.photoLabel}>Add Photo</Text>
                     <Text style={styles.photoSub}>Optional</Text>
@@ -431,8 +440,14 @@ export default function RegisterScreen() {
 
             {/* Submit error */}
             {errors.submit ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠ {errors.submit}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+                ]}
+              >
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{errors.submit}</Text>
               </View>
             ) : null}
 
@@ -441,7 +456,16 @@ export default function RegisterScreen() {
               {step === 0 && (
                 <>
                   <Field label="FULL NAME" error={errors.name}>
-                    <InputRow icon="👤">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="person-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="Muhammad Ali"
@@ -453,7 +477,16 @@ export default function RegisterScreen() {
                     </InputRow>
                   </Field>
                   <Field label="EMAIL ADDRESS" error={errors.email}>
-                    <InputRow icon="✉">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="mail-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="you@email.com"
@@ -466,7 +499,16 @@ export default function RegisterScreen() {
                     </InputRow>
                   </Field>
                   <Field label="PHONE NUMBER" error={errors.phone}>
-                    <InputRow icon="📞">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="call-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="03001234567"
@@ -478,7 +520,16 @@ export default function RegisterScreen() {
                     </InputRow>
                   </Field>
                   <Field label="CNIC NUMBER" error={errors.cnic}>
-                    <InputRow icon="🪪">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="card-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="12345-1234567-1"
@@ -494,9 +545,12 @@ export default function RegisterScreen() {
                     <View
                       style={[styles.inputRow, { alignItems: "flex-start" }]}
                     >
-                      <Text style={[styles.inputIcon, { marginTop: 14 }]}>
-                        🏅
-                      </Text>
+                      <Ionicons
+                        name="ribbon"
+                        size={16}
+                        color={G.muted}
+                        style={{ marginRight: 10, opacity: 0.6, marginTop: 14 }}
+                      />
                       <TextInput
                         style={[
                           styles.input,
@@ -638,14 +692,27 @@ export default function RegisterScreen() {
               {step === 2 && (
                 <>
                   <View style={styles.securityNote}>
-                    <Text style={styles.securityIcon}>🔐</Text>
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={20}
+                      color={G.primary}
+                    />
                     <Text style={styles.securityText}>
                       Your password is encrypted with bcrypt and never stored in
                       plain text.
                     </Text>
                   </View>
                   <Field label="PASSWORD" error={errors.password}>
-                    <InputRow icon="🔒">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="Min 6 characters"
@@ -661,7 +728,16 @@ export default function RegisterScreen() {
                     label="CONFIRM PASSWORD"
                     error={errors.confirmPassword}
                   >
-                    <InputRow icon="🔒">
+                    <InputRow
+                      icon={
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={16}
+                          color={G.muted}
+                          style={{ marginRight: 10, opacity: 0.6 }}
+                        />
+                      }
+                    >
                       <TextInput
                         style={styles.input}
                         placeholder="Re-enter password"
@@ -696,9 +772,11 @@ export default function RegisterScreen() {
                       <Text style={styles.nextBtnText}>
                         {step < 2 ? `CONTINUE` : "CREATE ACCOUNT"}
                       </Text>
-                      <Text style={styles.nextBtnArrow}>
-                        {step < 2 ? "→" : "✓"}
-                      </Text>
+                      {step < 2 ? (
+                        <Ionicons name="arrow-forward" size={18} color="#fff" />
+                      ) : (
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      )}
                     </>
                   )}
                 </LinearGradient>
@@ -743,10 +821,16 @@ function Field({
   );
 }
 
-function InputRow({ icon, children }: { icon: string; children: any }) {
+function InputRow({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: any;
+}) {
   return (
     <View style={styles.inputRow}>
-      <Text style={styles.inputIcon}>{icon}</Text>
+      {icon}
       {children}
     </View>
   );

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -170,7 +171,10 @@ function SportCard({
             },
           ]}
         >
-          <Text style={[sc.pillText, { color: item.accent }]}>EXPLORE →</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            <Text style={[sc.pillText, { color: item.accent }]}>EXPLORE</Text>
+            <Ionicons name="arrow-forward" size={9} color={item.accent} />
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -248,7 +252,7 @@ function AthleteCard({ item }: { item: any }) {
         )}
         {item.status === "approved" && (
           <View style={ac.verifiedBadge}>
-            <Text style={ac.verifiedCheck}>✓</Text>
+            <Ionicons name="checkmark" size={9} color={G.bg} />
           </View>
         )}
       </View>
@@ -276,7 +280,7 @@ function AthleteCard({ item }: { item: any }) {
           </Text>
         )}
       </View>
-      <Text style={ac.arrow}>›</Text>
+      <Ionicons name="chevron-forward" size={22} color={G.dim} style={{ marginRight: 4 }} />
     </TouchableOpacity>
   );
 }
@@ -401,7 +405,7 @@ function VideoThumbCard({ item, onPress }: { item: any; onPress: () => void }) {
           />
         ) : (
           <View style={{ alignItems: "center" }}>
-            <Text style={{ color: G.dim, fontSize: 24 }}>🎬</Text>
+            <Ionicons name="film-outline" size={24} color={G.dim} />
           </View>
         )}
         <View
@@ -423,9 +427,7 @@ function VideoThumbCard({ item, onPress }: { item: any; onPress: () => void }) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 11, marginLeft: 2 }}>
-              ▶
-            </Text>
+            <Ionicons name="play" size={11} color="#fff" style={{ marginLeft: 2 }} />
           </View>
         </View>
         <View
@@ -439,9 +441,12 @@ function VideoThumbCard({ item, onPress }: { item: any; onPress: () => void }) {
             paddingVertical: 2,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
-            👁 {fmt(item.views ?? 0)}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            <Ionicons name="eye" size={10} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
+              {fmt(item.views ?? 0)}
+            </Text>
+          </View>
         </View>
       </View>
       {item.caption ? (
@@ -580,14 +585,11 @@ function DiscoverFeedCard({ video, isActive, athlete, onCommentPress }: any) {
               },
             ]}
           >
-            <Text
-              style={[
-                { fontSize: 18, color: "#fff" },
-                liked && { color: G.primary },
-              ]}
-            >
-              {liked ? "♥" : "♡"}
-            </Text>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={18}
+              color={liked ? G.primary : "#fff"}
+            />
           </View>
           <Text style={dfc.count}>{fmt(likes)}</Text>
         </TouchableOpacity>
@@ -725,7 +727,7 @@ function DiscoverFeedModal({
           onPress={onClose}
           activeOpacity={0.8}
         >
-          <Text style={{ color: "#fff", fontSize: 20, marginTop: -2 }}>←</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View
           style={{
@@ -833,9 +835,10 @@ export default function DiscoverScreen() {
     debounceRef.current = setTimeout(() => doSearch(text, tab), 400);
   }
 
-  function handleTabSwitch(newTab: "athletes" | "videos") {
+  function handleTabSwitch(newTab: "athletes" | "videos", queryOverride?: string) {
     setTab(newTab);
-    if (query.trim()) doSearch(query, newTab);
+    const q = queryOverride ?? query;
+    if (q.trim()) doSearch(q, newTab);
   }
 
   const isSearching = query.trim().length > 0;
@@ -857,7 +860,12 @@ export default function DiscoverScreen() {
       {/* ── Search bar ── */}
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIconText}>🔍</Text>
+          <Ionicons
+            name="search"
+            size={16}
+            color={G.muted}
+            style={{ marginRight: 8 }}
+          />
           <TextInput
             style={styles.searchInput}
             placeholder="Search athletes, sports, cities..."
@@ -871,6 +879,7 @@ export default function DiscoverScreen() {
           {query.length > 0 && (
             <TouchableOpacity
               onPress={() => {
+                if (debounceRef.current) clearTimeout(debounceRef.current);
                 setQuery("");
                 setAthleteResults([]);
                 setVideoResults([]);
@@ -878,7 +887,7 @@ export default function DiscoverScreen() {
               }}
               style={styles.clearBtn}
             >
-              <Text style={{ color: G.muted, fontSize: 14 }}>✕</Text>
+              <Ionicons name="close" size={14} color={G.muted} />
             </TouchableOpacity>
           )}
         </View>
@@ -895,28 +904,42 @@ export default function DiscoverScreen() {
             onPress={() => handleTabSwitch("athletes")}
             activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.toggleText,
-                tab === "athletes" && styles.toggleTextActive,
-              ]}
-            >
-              👤 Athletes
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons
+                name="person-outline"
+                size={14}
+                color={tab === "athletes" ? "#fff" : G.muted}
+              />
+              <Text
+                style={[
+                  styles.toggleText,
+                  tab === "athletes" && styles.toggleTextActive,
+                ]}
+              >
+                Athletes
+              </Text>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, tab === "videos" && styles.toggleActive]}
             onPress={() => handleTabSwitch("videos")}
             activeOpacity={0.8}
           >
-            <Text
-              style={[
-                styles.toggleText,
-                tab === "videos" && styles.toggleTextActive,
-              ]}
-            >
-              🎬 Videos
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons
+                name="film-outline"
+                size={14}
+                color={tab === "videos" ? "#fff" : G.muted}
+              />
+              <Text
+                style={[
+                  styles.toggleText,
+                  tab === "videos" && styles.toggleTextActive,
+                ]}
+              >
+                Videos
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       )}
@@ -932,7 +955,12 @@ export default function DiscoverScreen() {
         tab === "athletes" ? (
           athleteResults.length === 0 && searched ? (
             <View style={styles.centered}>
-              <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
+              <Ionicons
+                name="search-outline"
+                size={48}
+                color={G.dim}
+                style={{ marginBottom: 12 }}
+              />
               <Text style={styles.emptyTitle}>No athletes found</Text>
               <Text style={{ color: G.muted, fontSize: 13 }}>
                 Try a different name or sport
@@ -951,7 +979,12 @@ export default function DiscoverScreen() {
           )
         ) : videoResults.length === 0 && searched ? (
           <View style={styles.centered}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>🎬</Text>
+            <Ionicons
+              name="film-outline"
+              size={48}
+              color={G.dim}
+              style={{ marginBottom: 12 }}
+            />
             <Text style={styles.emptyTitle}>No videos found</Text>
           </View>
         ) : (
@@ -991,8 +1024,7 @@ export default function DiscoverScreen() {
               item={item}
               onPress={() => {
                 setQuery(item.name);
-                handleTabSwitch("athletes");
-                doSearch(item.name, "athletes");
+                handleTabSwitch("athletes", item.name);
               }}
             />
           )}

@@ -1,8 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
   CameraView,
   useCameraPermissions,
   useMicrophonePermissions,
 } from "expo-camera";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -164,9 +166,11 @@ function PersonalVideoCard({ video, isActive, athlete }: any) {
           disabled={likeLoading}
         >
           <View style={[pvc.iconWrap, liked && pvc.iconWrapLiked]}>
-            <Text style={[pvc.icon, liked && { color: G.primary }]}>
-              {liked ? "♥" : "♡"}
-            </Text>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={20}
+              color={liked ? G.primary : "#fff"}
+            />
           </View>
           <Text style={pvc.count}>{fmt(likes)}</Text>
         </TouchableOpacity>
@@ -377,7 +381,7 @@ function PersonalFeedModal({
           }}
           onPress={onClose}
         >
-          <Text style={{ color: "#fff", fontSize: 20, marginTop: -2 }}>←</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View
           style={{
@@ -467,11 +471,15 @@ export default function CreateScreen() {
   }, [videoUri]);
 
   const cameraRef = useRef<CameraView>(null);
+  const recordingCancelledRef = useRef(false);
+  const postingRef = useRef(false);
+  const fetchVideosRequestId = useRef(0);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
   const fetchMyVideos = useCallback(async () => {
     if (!athlete?.id) return;
+    const requestId = ++fetchVideosRequestId.current;
     setLoadingVideos(true);
     try {
       const res = await fetch(
@@ -489,11 +497,11 @@ export default function CreateScreen() {
               .catch(() => undefined),
           })),
         );
-        setMyVideos(withThumbs);
+        if (requestId === fetchVideosRequestId.current) setMyVideos(withThumbs);
       }
     } catch {
     } finally {
-      setLoadingVideos(false);
+      if (requestId === fetchVideosRequestId.current) setLoadingVideos(false);
     }
   }, [athlete]);
 
@@ -558,21 +566,36 @@ export default function CreateScreen() {
       cameraRef.current.stopRecording();
       setIsRecording(false);
     } else {
+      recordingCancelledRef.current = false;
       setIsRecording(true);
       try {
         const video = await cameraRef.current.recordAsync({ maxDuration: 120 });
-        if (video?.uri) {
+        if (video?.uri && !recordingCancelledRef.current) {
+          let fileSize: number | null = null;
+          try {
+            fileSize = new FileSystem.File(video.uri).size;
+          } catch {}
+          if (fileSize && fileSize > 50 * 1024 * 1024) {
+            Alert.alert("Video Too Large", "Maximum 50MB.");
+            return;
+          }
           setVideoUri(video.uri);
+          setVideoSize(fileSize ? `${(fileSize / (1024 * 1024)).toFixed(1)}MB` : null);
           setMode("preview");
         }
       } catch {
         setIsRecording(false);
+        Alert.alert(
+          "Recording Failed",
+          "Something went wrong while recording. Please try again.",
+        );
       }
     }
   }
 
   async function handlePost() {
-    if (!videoUri || !athlete?.id) return;
+    if (!videoUri || !athlete?.id || postingRef.current) return;
+    postingRef.current = true;
     setMode("uploading");
     setUploadStep(0);
     setUploadProgress(0);
@@ -628,6 +651,8 @@ export default function CreateScreen() {
           ? "Upload timed out. Try a shorter video."
           : "Upload failed. Check your connection.";
       Alert.alert("Upload Failed", msg);
+    } finally {
+      postingRef.current = false;
     }
   }
 
@@ -690,11 +715,15 @@ export default function CreateScreen() {
                 justifyContent: "center",
               }}
               onPress={() => {
+                if (isRecording && cameraRef.current) {
+                  recordingCancelledRef.current = true;
+                  cameraRef.current.stopRecording();
+                }
                 setMode("menu");
                 setIsRecording(false);
               }}
             >
-              <Text style={{ color: "#fff", fontSize: 16 }}>✕</Text>
+              <Ionicons name="close" size={20} color="#fff" />
             </TouchableOpacity>
             <View
               style={{
@@ -789,7 +818,7 @@ export default function CreateScreen() {
               onPress={() => setMode("menu")}
               activeOpacity={0.7}
             >
-              <Text style={{ color: G.muted, fontSize: 24 }}>←</Text>
+              <Ionicons name="chevron-back" size={22} color={G.muted} />
             </TouchableOpacity>
             <Text style={{ color: G.text, fontSize: 16, fontWeight: "700" }}>
               New Post
@@ -870,25 +899,38 @@ export default function CreateScreen() {
               gap: 8,
             }}
           >
-            <Text style={{ color: G.muted, fontSize: 13 }}>
-              🏅 Sport:{" "}
-              <Text style={{ color: G.text, fontWeight: "600" }}>
-                {athlete?.sport?.replace(/_/g, " ") || "—"}
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Ionicons name="medal-outline" size={14} color={G.muted} />
+              <Text style={{ color: G.muted, fontSize: 13 }}>
+                Sport:{" "}
+                <Text style={{ color: G.text, fontWeight: "600" }}>
+                  {athlete?.sport?.replace(/_/g, " ") || "—"}
+                </Text>
               </Text>
-            </Text>
-            <Text style={{ color: G.muted, fontSize: 13 }}>
-              📍 City:{" "}
-              <Text style={{ color: G.text, fontWeight: "600" }}>
-                {athlete?.city || "—"}
+            </View>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Ionicons name="location-outline" size={14} color={G.muted} />
+              <Text style={{ color: G.muted, fontSize: 13 }}>
+                City:{" "}
+                <Text style={{ color: G.text, fontWeight: "600" }}>
+                  {athlete?.city || "—"}
+                </Text>
               </Text>
-            </Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.postBtn}
             onPress={handlePost}
             activeOpacity={0.85}
           >
-            <Text style={styles.postBtnText}>POST VIDEO →</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={styles.postBtnText}>POST VIDEO</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </View>
           </TouchableOpacity>
           <View style={{ height: 30 }} />
         </ScrollView>
@@ -902,8 +944,11 @@ export default function CreateScreen() {
       <StatusBar hidden={true} />
 
       {successToast && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>✓ Video posted successfully!</Text>
+        <View style={styles.toastOverlay} pointerEvents="none">
+          <View style={styles.toast}>
+            <Ionicons name="checkmark-circle" size={22} color={G.primary} />
+            <Text style={styles.toastText}>Video posted successfully!</Text>
+          </View>
         </View>
       )}
 
@@ -948,7 +993,7 @@ export default function CreateScreen() {
             <Text style={styles.actionLabel}>RECORD</Text>
             <Text style={styles.actionSub}>Record directly with camera</Text>
           </View>
-          <Text style={{ color: G.primary, fontSize: 20 }}>→</Text>
+          <Ionicons name="chevron-forward" size={20} color={G.primary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -974,7 +1019,7 @@ export default function CreateScreen() {
             <Text style={styles.actionLabel}>UPLOAD</Text>
             <Text style={styles.actionSub}>Choose from your gallery</Text>
           </View>
-          <Text style={{ color: G.gold, fontSize: 20 }}>→</Text>
+          <Ionicons name="chevron-forward" size={20} color={G.gold} />
         </TouchableOpacity>
 
         {/* Gallery */}
@@ -1039,7 +1084,7 @@ export default function CreateScreen() {
               gap: 10,
             }}
           >
-            <Text style={{ fontSize: 36 }}>🎬</Text>
+            <Ionicons name="film-outline" size={36} color={G.muted} />
             <Text style={{ color: G.muted, fontSize: 13, textAlign: "center" }}>
               No videos yet — post your first one!
             </Text>
@@ -1071,16 +1116,17 @@ export default function CreateScreen() {
                     />
                   ) : (
                     <View style={styles.thumbPlaceholder}>
-                      <Text style={{ fontSize: 28 }}>🎬</Text>
+                      <Ionicons name="film-outline" size={28} color={G.muted} />
                     </View>
                   )}
                   <View style={styles.thumbOverlay}>
                     <View style={styles.thumbPlayBtn}>
-                      <Text
-                        style={{ color: "#fff", fontSize: 14, marginLeft: 2 }}
-                      >
-                        ▶
-                      </Text>
+                      <Ionicons
+                        name="play"
+                        size={14}
+                        color="#fff"
+                        style={{ marginLeft: 2 }}
+                      />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -1104,18 +1150,29 @@ export default function CreateScreen() {
                                 }),
                               },
                             );
-                            if (res.ok)
+                            if (res.ok) {
                               setMyVideos((prev) =>
                                 prev.filter((v) => v.id !== video.id),
                               );
-                          } catch {}
+                            } else {
+                              Alert.alert(
+                                "Delete Failed",
+                                "Could not delete the video. Please try again.",
+                              );
+                            }
+                          } catch {
+                            Alert.alert(
+                              "Delete Failed",
+                              "Check your connection and try again.",
+                            );
+                          }
                         },
                       },
                     ]);
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 14 }}>🗑</Text>
+                  <Ionicons name="trash-outline" size={16} color="#fff" />
                 </TouchableOpacity>
                 {video.caption ? (
                   <View
@@ -1149,17 +1206,26 @@ export default function CreateScreen() {
             padding: 18,
           }}
         >
-          <Text
+          <View
             style={{
-              color: G.primary,
-              fontSize: 13,
-              fontWeight: "800",
-              letterSpacing: 1.5,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
               marginBottom: 14,
             }}
           >
-            ✨ PRO TIPS
-          </Text>
+            <Ionicons name="sparkles" size={14} color={G.primary} />
+            <Text
+              style={{
+                color: G.primary,
+                fontSize: 13,
+                fontWeight: "800",
+                letterSpacing: 1.5,
+              }}
+            >
+              PRO TIPS
+            </Text>
+          </View>
           {[
             "Film in portrait mode for best visibility",
             "Show your best skills in the first 3 seconds",
@@ -1343,18 +1409,27 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
-  toast: {
+  toastOverlay: {
     position: "absolute",
-    top: 20,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 100,
-    backgroundColor: "rgba(9,192,104,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toast: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    backgroundColor: "#0A0A0A",
     borderWidth: 1,
     borderColor: G.primary,
     borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 18,
   },
   toastText: { color: G.primary, fontSize: 14, fontWeight: "700" },
 });

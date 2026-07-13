@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -81,7 +82,14 @@ export default function EditProfileScreen() {
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!r.canceled && r.assets[0]) setPhoto(r.assets[0]);
+    if (!r.canceled && r.assets[0]) {
+      const asset = r.assets[0];
+      if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
+        Alert.alert("Photo Too Large", "Maximum 10MB.");
+        return;
+      }
+      setPhoto(asset);
+    }
   }
 
   async function handleSave() {
@@ -113,7 +121,17 @@ export default function EditProfileScreen() {
           body: photoForm,
         });
         const photoData = await photoRes.json();
-        if (photoRes.ok) newPhotoUrl = photoData.photo_url;
+        if (photoRes.ok) {
+          newPhotoUrl = photoData.photo_url;
+        } else {
+          Alert.alert(
+            "Photo Upload Failed",
+            photoData.message ||
+              "Could not upload your new photo. Please try again.",
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       const body = new URLSearchParams();
@@ -168,7 +186,7 @@ export default function EditProfileScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <Text style={styles.backBtnText}>←</Text>
+              <Ionicons name="chevron-back" size={22} color={G.muted} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>EDIT PROFILE</Text>
             <TouchableOpacity
@@ -203,7 +221,7 @@ export default function EditProfileScreen() {
                 </View>
               )}
               <View style={styles.photoEditBadge}>
-                <Text style={styles.photoEditIcon}>📷</Text>
+                <Ionicons name="camera" size={14} color={G.bg} />
               </View>
             </TouchableOpacity>
             <Text style={styles.photoHint}>Tap to change photo</Text>

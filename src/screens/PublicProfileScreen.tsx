@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -138,7 +139,7 @@ function CommentsSheet({ visible, videoId, onClose, viewer }: any) {
             {total} Comments
           </Text>
           <TouchableOpacity onPress={onClose}>
-            <Text style={{ color: G.muted, fontSize: 18 }}>✕</Text>
+            <Ionicons name="close" size={18} color={G.muted} />
           </TouchableOpacity>
         </View>
         {loading ? (
@@ -283,7 +284,7 @@ function CommentsSheet({ visible, videoId, onClose, viewer }: any) {
             {posting ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={{ color: "#fff", fontSize: 14 }}>➤</Text>
+              <Ionicons name="send" size={14} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -307,10 +308,12 @@ function VideoCard({ video, isActive, viewer, onCommentPress }: any) {
   const viewTracked = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
     if (!viewer?.id) return;
     fetch(`${API_BASE_URL}/api/videos/${video.id}/like?athlete_id=${viewer.id}`)
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         if (d.status === "success") {
           setLiked(d.liked);
           setLikes(d.likes);
@@ -320,9 +323,13 @@ function VideoCard({ video, isActive, viewer, onCommentPress }: any) {
     fetch(`${API_BASE_URL}/api/videos/${video.id}/views`)
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         if (d.status === "success") setViews(d.views);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [video.id, viewer?.id]);
 
   useEffect(() => {
@@ -425,9 +432,11 @@ function VideoCard({ video, isActive, viewer, onCommentPress }: any) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 22, color: liked ? G.primary : "#fff" }}>
-              {liked ? "♥" : "♡"}
-            </Text>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={22}
+              color={liked ? G.primary : "#fff"}
+            />
           </View>
           <Text style={{ fontSize: 11, color: "#fff", fontWeight: "700" }}>
             {fmt(likes)}
@@ -574,7 +583,7 @@ function VideoFeedModal({ visible, videos, startIndex, onClose, viewer }: any) {
           }}
           onPress={onClose}
         >
-          <Text style={{ color: "#fff", fontSize: 20, marginTop: -2 }}>←</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View
           style={{
@@ -687,7 +696,7 @@ function VideoThumb({ item, onPress }: any) {
             }}
           />
         ) : (
-          <Text style={{ fontSize: 24 }}>🎬</Text>
+          <Ionicons name="film-outline" size={24} color={G.muted} />
         )}
         <View
           style={{
@@ -706,9 +715,7 @@ function VideoThumb({ item, onPress }: any) {
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 12, marginLeft: 2 }}>
-              ▶
-            </Text>
+            <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
           </View>
         </View>
         <View
@@ -720,10 +727,14 @@ function VideoThumb({ item, onPress }: any) {
             borderRadius: 8,
             paddingHorizontal: 5,
             paddingVertical: 2,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 3,
           }}
         >
+          <Ionicons name="eye" size={10} color="#fff" />
           <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>
-            👁 {fmt(item.views ?? 0)}
+            {fmt(item.views ?? 0)}
           </Text>
         </View>
       </View>
@@ -761,12 +772,18 @@ export default function PublicProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [feedOpen, setFeedOpen] = useState(false);
   const [feedStart, setFeedStart] = useState(0);
+  const [networkError, setNetworkError] = useState(false);
 
   const fetchAll = useCallback(
     async (isRefresh = false) => {
-      if (!athleteId) return;
+      if (!athleteId) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
+      setNetworkError(false);
       try {
         const [pRes, sRes, vRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/athletes/${athleteId}`),
@@ -809,7 +826,9 @@ export default function PublicProfileScreen() {
           );
           setVideos(withViews);
         }
+        if (!pRes.ok || !sRes.ok || !vRes.ok) setNetworkError(true);
       } catch {
+        setNetworkError(true);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -853,6 +872,10 @@ export default function PublicProfileScreen() {
       }
     } catch {
       setIsFollowing(was);
+      setStats((s) => ({
+        ...s,
+        followers: was ? s.followers + 1 : Math.max(0, s.followers - 1),
+      }));
     } finally {
       setFollowLoading(false);
     }
@@ -889,13 +912,33 @@ export default function PublicProfileScreen() {
         ]}
       >
         <StatusBar hidden={true} />
-        <Text style={{ color: G.muted, fontSize: 14 }}>Profile not found</Text>
+        <Text style={{ color: G.muted, fontSize: 14 }}>
+          {networkError ? "Couldn't load profile" : "Profile not found"}
+        </Text>
+        {networkError && (
+          <TouchableOpacity
+            onPress={() => fetchAll()}
+            style={{ marginTop: 12 }}
+          >
+            <Text
+              style={{ color: G.primary, fontSize: 15, fontWeight: "700" }}
+            >
+              Retry
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginTop: 16 }}
+          style={{
+            marginTop: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+          }}
         >
+          <Ionicons name="chevron-back" size={16} color={G.primary} />
           <Text style={{ color: G.primary, fontSize: 15, fontWeight: "700" }}>
-            ← Go Back
+            Go Back
           </Text>
         </TouchableOpacity>
       </View>
@@ -925,7 +968,7 @@ export default function PublicProfileScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Text style={styles.backBtnText}>←</Text>
+            <Ionicons name="chevron-back" size={22} color={G.muted} />
           </TouchableOpacity>
           <Text style={styles.handle}>
             @{profile.name?.toLowerCase().replace(/\s+/g, "_")}
@@ -951,9 +994,7 @@ export default function PublicProfileScreen() {
             )}
             {profile.status === "approved" && (
               <View style={styles.verifiedBadge}>
-                <Text style={{ color: G.bg, fontSize: 12, fontWeight: "900" }}>
-                  ✓
-                </Text>
+                <Ionicons name="checkmark" size={12} color={G.bg} />
               </View>
             )}
           </View>
@@ -976,8 +1017,14 @@ export default function PublicProfileScreen() {
               </View>
             )}
             {profile.city && (
-              <View style={styles.tagDark}>
-                <Text style={styles.tagDarkText}>📍 {profile.city}</Text>
+              <View
+                style={[
+                  styles.tagDark,
+                  { flexDirection: "row", alignItems: "center", gap: 5 },
+                ]}
+              >
+                <Ionicons name="location" size={13} color={G.muted} />
+                <Text style={styles.tagDarkText}>{profile.city}</Text>
               </View>
             )}
           </View>
@@ -994,15 +1041,41 @@ export default function PublicProfileScreen() {
             {followLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text
-                style={[
-                  styles.followBtnText,
-                  isFollowing && { color: G.primary },
-                ]}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                }}
               >
-                {isFollowing ? "✓  Following" : "+  Follow"}
-              </Text>
+                <Ionicons
+                  name={isFollowing ? "checkmark" : "add"}
+                  size={16}
+                  color={isFollowing ? G.primary : "#fff"}
+                />
+                <Text
+                  style={[
+                    styles.followBtnText,
+                    isFollowing && { color: G.primary },
+                  ]}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </Text>
+              </View>
             )}
+          </TouchableOpacity>
+        )}
+
+        {/* Load error banner */}
+        {networkError && (
+          <TouchableOpacity
+            style={styles.dataErrorBanner}
+            onPress={() => fetchAll()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.dataErrorBannerText}>
+              Some data couldn't load. Tap to retry.
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -1089,7 +1162,7 @@ export default function PublicProfileScreen() {
               gap: 8,
             }}
           >
-            <Text style={{ fontSize: 32 }}>🎬</Text>
+            <Ionicons name="film-outline" size={32} color={G.muted} />
             <Text style={{ color: G.muted, fontSize: 13 }}>
               No videos posted yet
             </Text>
@@ -1248,6 +1321,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.5,
+  },
+  dataErrorBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: "rgba(229,57,53,0.12)",
+    borderWidth: 0.5,
+    borderColor: "#E53935",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dataErrorBannerText: {
+    color: "#E53935",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
   statsRow: {
     flexDirection: "row",

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -153,7 +154,7 @@ export default function LoginScreen() {
             {/* Error */}
             {error ? (
               <View style={styles.errorBox}>
-                <Text style={styles.errorIcon}>⚠</Text>
+                <Ionicons name="alert-circle" size={16} color={styles.errorIcon.color} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
@@ -162,7 +163,12 @@ export default function LoginScreen() {
             <View style={styles.fieldWrap}>
               <Text style={styles.fieldLabel}>EMAIL</Text>
               <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>✉</Text>
+                <Ionicons
+                  name="mail-outline"
+                  size={16}
+                  color={G.muted}
+                  style={{ marginRight: 10, opacity: 0.5 }}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="your@email.com"
@@ -183,7 +189,12 @@ export default function LoginScreen() {
             <View style={styles.fieldWrap}>
               <Text style={styles.fieldLabel}>PASSWORD</Text>
               <View style={styles.inputWrap}>
-                <Text style={styles.inputIcon}>🔒</Text>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={16}
+                  color={G.muted}
+                  style={{ marginRight: 10, opacity: 0.5 }}
+                />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="Enter password"
@@ -207,6 +218,14 @@ export default function LoginScreen() {
               </View>
             </View>
 
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              onPress={() => router.push("/forgot-password")}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+
             {/* Sign in button */}
             <TouchableOpacity
               style={[styles.loginBtn, loading && { opacity: 0.7 }]}
@@ -225,7 +244,7 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <Text style={styles.loginBtnText}>SIGN IN</Text>
-                    <Text style={styles.loginBtnArrow}>→</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </>
                 )}
               </LinearGradient>
@@ -465,4 +484,11 @@ const styles = StyleSheet.create({
   },
   footerText: { color: G.dim, fontSize: 13 },
   footerLink: { color: G.primary, fontSize: 13, fontWeight: "700" },
+  forgotBtn: {
+    alignSelf: "flex-end",
+    marginHorizontal: 24,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  forgotText: { color: G.primary, fontSize: 13, fontWeight: "600" },
 });

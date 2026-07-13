@@ -1,7 +1,9 @@
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -14,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../../src/config/api";
 import { useAuth } from "../../src/context/AuthContext";
+import { SportIcon } from "../../src/components/SportIcon";
 
 const G = {
   bg: "#0A0A0A",
@@ -50,6 +53,7 @@ interface Trial {
 }
 
 function spotsColor(left: number, total: number) {
+  if (!total) return "#555";
   const p = left / total;
   if (p <= 0) return "#555";
   if (p <= 0.2) return G.gold;
@@ -57,7 +61,7 @@ function spotsColor(left: number, total: number) {
 }
 
 function spotsLabel(left: number, total: number) {
-  if (left === 0) return "Full";
+  if (left === 0 || !total) return "Full";
   if (left / total <= 0.2) return `${left} left — Almost Full!`;
   return `${left} of ${total} spots`;
 }
@@ -65,37 +69,40 @@ function spotsLabel(left: number, total: number) {
 // ── Featured card ─────────────────────────────────────────────
 function FeaturedCard({ trial, onRegister, registering }: any) {
   const sc = spotsColor(trial.spots_left, trial.spots_total);
-  const pct = Math.round((1 - trial.spots_left / trial.spots_total) * 100);
+  const pct = trial.spots_total
+    ? Math.round((1 - trial.spots_left / trial.spots_total) * 100)
+    : 100;
 
   return (
     <View style={feat.card}>
       <View style={feat.accentBar} />
       <View style={feat.header}>
         <View style={feat.sportBadge}>
-          <Text style={feat.sportEmoji}>{trial.sportEmoji}</Text>
+          <SportIcon sport={trial.sport} size={14} color={G.primary} />
           <Text style={feat.sportName}>{trial.sport}</Text>
         </View>
-        <View style={feat.featuredBadge}>
-          <Text style={feat.featuredText}>⭐ FEATURED</Text>
+        <View style={[feat.featuredBadge, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
+          <Ionicons name="star" size={11} color={G.gold} />
+          <Text style={feat.featuredText}>FEATURED</Text>
         </View>
       </View>
       <Text style={feat.title}>{trial.title}</Text>
       <Text style={feat.subtitle}>{trial.subtitle}</Text>
       <View style={feat.infoGrid}>
         {[
-          ["📅", "DATE", trial.date],
-          ["🕐", "TIME", trial.time],
-          ["🏆", "PRIZE", trial.prize],
+          ["calendar-outline", "DATE", trial.date],
+          ["time-outline", "TIME", trial.time],
+          ["trophy", "PRIZE", trial.prize],
         ].map(([icon, label, val]) => (
           <View key={label as string} style={feat.infoBox}>
-            <Text style={feat.infoIcon}>{icon}</Text>
+            <Ionicons name={icon as any} size={16} color={G.text} />
             <Text style={feat.infoLabel}>{label}</Text>
             <Text style={feat.infoValue}>{val}</Text>
           </View>
         ))}
       </View>
       <View style={feat.venueRow}>
-        <Text style={feat.venueIcon}>📍</Text>
+        <Ionicons name="location" size={13} color={G.muted} />
         <Text style={feat.venueText}>{trial.venue}</Text>
       </View>
       <View
@@ -137,14 +144,21 @@ function FeaturedCard({ trial, onRegister, registering }: any) {
         {registering ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text
-            style={[
-              feat.registerText,
-              trial.registered && { color: G.primary },
-            ]}
-          >
-            {trial.registered ? "✓ Registered" : "Register Now →"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons
+              name={trial.registered ? "checkmark" : "arrow-forward"}
+              size={14}
+              color={trial.registered ? G.primary : "#fff"}
+            />
+            <Text
+              style={[
+                feat.registerText,
+                trial.registered && { color: G.primary },
+              ]}
+            >
+              {trial.registered ? "Registered" : "Register Now"}
+            </Text>
+          </View>
         )}
       </TouchableOpacity>
     </View>
@@ -267,14 +281,24 @@ function TrialCard({ trial, onRegister, registering }: any) {
       </View>
       <View style={card.content}>
         <View style={card.badgeRow}>
-          <View style={card.sportPill}>
-            <Text style={card.sportPillText}>
-              {trial.sportEmoji} {trial.sport}
-            </Text>
+          <View
+            style={[
+              card.sportPill,
+              { flexDirection: "row", alignItems: "center", gap: 4 },
+            ]}
+          >
+            <SportIcon sport={trial.sport} size={10} color={G.primary} />
+            <Text style={card.sportPillText}>{trial.sport}</Text>
           </View>
           {trial.registered && (
-            <View style={card.regPill}>
-              <Text style={card.regPillText}>✓ Registered</Text>
+            <View
+              style={[
+                card.regPill,
+                { flexDirection: "row", alignItems: "center", gap: 3 },
+              ]}
+            >
+              <Ionicons name="checkmark" size={10} color={G.primary} />
+              <Text style={card.regPillText}>Registered</Text>
             </View>
           )}
           {isDone && (
@@ -285,19 +309,25 @@ function TrialCard({ trial, onRegister, registering }: any) {
           {!isDone &&
             trial.spots_left / trial.spots_total <= 0.2 &&
             trial.spots_left > 0 && (
-              <View style={card.hotPill}>
-                <Text style={card.hotPillText}>🔥 Hot</Text>
+              <View
+                style={[
+                  card.hotPill,
+                  { flexDirection: "row", alignItems: "center", gap: 3 },
+                ]}
+              >
+                <Ionicons name="flame" size={10} color={G.gold} />
+                <Text style={card.hotPillText}>Hot</Text>
               </View>
             )}
         </View>
         <Text style={card.title}>{trial.title}</Text>
         {[
-          ["🕐", `${trial.time}  ·  ${trial.province}`],
-          ["📍", trial.venue],
-          ["🏆", trial.prize],
+          ["time-outline", `${trial.time}  ·  ${trial.province}`],
+          ["location-outline", trial.venue],
+          ["trophy", trial.prize],
         ].map(([icon, val]) => (
           <View key={val as string} style={card.infoRow}>
-            <Text style={card.infoIcon}>{icon}</Text>
+            <Ionicons name={icon as any} size={11} color={G.muted} />
             <Text style={card.infoText} numberOfLines={1}>
               {val}
             </Text>
@@ -320,10 +350,19 @@ function TrialCard({ trial, onRegister, registering }: any) {
               >
                 {registering ? (
                   <ActivityIndicator color="#fff" size="small" />
+                ) : trial.registered ? (
+                  <Text style={card.registerText}>Unregister</Text>
                 ) : (
-                  <Text style={card.registerText}>
-                    {trial.registered ? "Unregister" : "Register →"}
-                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Text style={card.registerText}>Register</Text>
+                    <Ionicons name="arrow-forward" size={11} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
             )}
@@ -544,8 +583,14 @@ export default function TrialsScreen() {
             };
           }),
         );
+      } else {
+        Alert.alert(
+          "Registration Failed",
+          data.message || "Please try again.",
+        );
       }
     } catch {
+      Alert.alert("Registration Failed", "Check your connection and try again.");
     } finally {
       setRegisteringId(null);
     }
@@ -604,13 +649,18 @@ export default function TrialsScreen() {
               </View>
               <View style={styles.headerRight}>
                 <Text style={styles.headerSub}>Khelo Punjab</Text>
-                <Text style={styles.headerEmoji}>🏅</Text>
+                <Ionicons name="trophy" size={28} color={G.gold} />
               </View>
             </View>
 
             {error ? (
               <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠ {error}</Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                >
+                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => fetchTrials()}
                   style={styles.retryBtn}
@@ -652,7 +702,12 @@ export default function TrialsScreen() {
 
             {featured.length > 0 && (
               <>
-                <Text style={styles.sectionLabel}>⭐ FEATURED EVENT</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginHorizontal: 20, marginBottom: 14 }}>
+                  <Ionicons name="star" size={12} color={G.muted} />
+                  <Text style={[styles.sectionLabel, { marginHorizontal: 0, marginBottom: 0 }]}>
+                    FEATURED EVENT
+                  </Text>
+                </View>
                 {featured.map((t) => (
                   <FeaturedCard
                     key={t.id}
@@ -664,7 +719,25 @@ export default function TrialsScreen() {
               </>
             )}
             {regular.length > 0 && (
-              <Text style={styles.sectionLabel}>📅 UPCOMING EVENTS</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  marginHorizontal: 20,
+                  marginBottom: 14,
+                }}
+              >
+                <Ionicons name="calendar-outline" size={11} color={G.muted} />
+                <Text
+                  style={[
+                    styles.sectionLabel,
+                    { marginHorizontal: 0, marginBottom: 0 },
+                  ]}
+                >
+                  UPCOMING EVENTS
+                </Text>
+              </View>
             )}
           </>
         }
@@ -677,7 +750,7 @@ export default function TrialsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={{ fontSize: 48 }}>🏟</Text>
+            <MaterialCommunityIcons name="stadium" size={48} color={G.muted} />
             <Text style={styles.emptyTitle}>No trials found</Text>
             <Text style={styles.emptyText}>
               {activeFilter === "Registered"
