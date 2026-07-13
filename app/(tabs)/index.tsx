@@ -534,11 +534,11 @@ function VideoCard({
 export default function HomeScreen() {
   const { athlete } = useAuth();
   const insets = useSafeAreaInsets();
-  const tabBarHeight =
+  const fallbackTabBarHeight =
     TAB_BAR_HEIGHT +
     Math.max(insets.bottom, Platform.OS === "android" ? 8 : 4) +
     0.5;
-  const pageHeight = height - tabBarHeight;
+  const [pageHeight, setPageHeight] = useState(height - fallbackTabBarHeight);
 
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -659,7 +659,10 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      onLayout={(e) => setPageHeight(e.nativeEvent.layout.height)}
+    >
       <StatusBar hidden={true} />
 
       {/* Category pills */}
